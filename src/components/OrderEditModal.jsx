@@ -160,6 +160,7 @@ const OrderEditModal = ({ order, onClose, onSave }) => {
       packagePrice: template.sellingPrice,
       quantity: 1,
       orderProducts: template.packageProducts?.map(pp => ({
+      productId: pp.product?.productId || "",
       productName: pp.product?.productName || "Unknown",
       unitCost: pp.product?.costPrice || 0,
       quantity: pp.quantity

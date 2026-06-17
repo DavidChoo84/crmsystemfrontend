@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom"; // 🔑 Added useNavigate
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 
@@ -7,13 +7,28 @@ const MainLayout = () => {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const location = useLocation();
+  const navigate = useNavigate(); // 🔑 Initialized navigation hook
+  
   // Header height (adjust if you change padding in Header)
   const headerHeight = 110; // px
 
   useEffect(() => {
+    // 🔒 AUTH GUARD: Check if user is logged in before doing anything else
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/login", { replace: true });
+      return;
+    }
+
     const fetchProjects = async () => {
       try {
-        const res = await fetch("http://localhost:3000/projects");
+        const res = await fetch("http://localhost:3000/projects", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}` // 🔑 Attaches your secure JWT token to the request
+          }
+        });
         const data = await res.json();
         setProjects(Array.isArray(data) ? data : []);
       } catch (err) {
@@ -23,7 +38,7 @@ const MainLayout = () => {
       }
     };
     fetchProjects();
-  }, [location.pathname]); // Re-sync when user navigates
+  }, [location.pathname, navigate]); // Re-sync when user navigates
 
   const isProjectRoute = location.pathname.startsWith("/project");
   

@@ -71,7 +71,17 @@ const CustomerDetailModal = ({ customer, onClose }) => {
               {show(customer.name) && <Detail label="Full Name" value={customer.name} className="col-span-2" />}
               {show(customer.email) && <Detail label="Email Address" value={customer.email} className="col-span-2" />}
               {show(customer.mobilePhone) && <Detail label="Mobile Phone" value={customer.mobilePhone} />}
+              {show(customer.dateOfBirth) && <Detail label="Date of Birth" value={customer.dateOfBirth} />}
               
+              {/* Address Metrics */}
+              <div className="col-span-2 mt-2">
+                 <hr className="border-gray-100 mb-4" />
+              </div>
+              {show(customer.address) && <Detail label="Address" value={customer.address} className="col-span-2" />}
+              {show(customer.postCode) && <Detail label="Postcode" value={customer.postCode}/>}
+              {show(customer.city) && <Detail label="City" value={customer.city} />}
+              {show(customer.state) && <Detail label="State" value={customer.state} />}
+
               {/* Sales Metrics */}
               <div className="col-span-2 mt-2">
                  <hr className="border-gray-100 mb-4" />

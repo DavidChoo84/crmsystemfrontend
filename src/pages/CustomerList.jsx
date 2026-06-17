@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEye, faPenToSquare, faTrash, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faEye, faPenToSquare, faTrash, faPlus, faFilter, faUndo } from "@fortawesome/free-solid-svg-icons";
 
 // Assuming you have created these similar to your Product modals
 import CustomerDetailModal from "../components/CustomerDetailModal";
@@ -18,6 +18,10 @@ const CustomerList = () => {
   const [deleteCustomer, setDeleteCustomer] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false); // Animation trigger
   const [deleteModalVisible, setDeleteModalVisible] = useState(false); // DOM render
+
+  // 🚨 NEW FILTER STATES
+  const [filterExactDate, setFilterExactDate] = useState(""); // Format: YYYY-MM-DD
+  const [filterMonth, setFilterMonth] = useState(""); // Format: "01" through "12"
 
   // Notification
   const [notification, setNotification] = useState({ message: "", type: "" });
@@ -52,15 +56,11 @@ const CustomerList = () => {
   // 2. Add Customer (Pre-fetch ID)
   const handleAdd = async () => {
     try {
-      // Get next ID from backend service we created earlier
       const res = await fetch("http://localhost:3000/customers/next-id"); 
-      // Note: Make sure to expose this endpoint in your Controller
-      // If endpoint doesn't exist yet, you can pass "Auto-Generated" as placeholder
-      
       let nextId = "C???";
       if (res.ok) {
         const data = await res.json();
-        nextId = data.nextId || data; // Adjust based on your API return
+        nextId = data.nextId || data;
       }
 
       setEditCustomer({
@@ -71,7 +71,8 @@ const CustomerList = () => {
         mobilePhone: "",
         totalOrder: 0,
         totalSpent: 0,
-        privilege: "Premium", // Default
+        privilege: "Premium",
+        dateOfBirth: "", // Added explicit blank field default
       });
 
       setShowEditModal(true);
@@ -163,6 +164,37 @@ const CustomerList = () => {
     }
   };
 
+  // 🚨 6. COMPUTE FILTERED CUSTOMERS LIST
+  const filteredCustomers = customers.filter((c) => {
+    if (!c.dateOfBirth) {
+      // If a filter is active but customer has no DOB, hide them
+      return !filterExactDate && !filterMonth;
+    }
+
+    const birthDate = new Date(c.dateOfBirth);
+    if (isNaN(birthDate.getTime())) return false; // Guard against broken dates
+
+    // Exact Date Condition check (matches YYYY-MM-DD format)
+    if (filterExactDate) {
+      const targetIso = birthDate.toISOString().split("T")[0];
+      if (targetIso !== filterExactDate) return false;
+    }
+
+    // Month Condition check (matches "01" through "12")
+    if (filterMonth) {
+      const customerMonth = (birthDate.getMonth() + 1).toString().padStart(2, "0");
+      if (customerMonth !== filterMonth) return false;
+    }
+
+    return true;
+  });
+
+  // Reset helper
+  const handleClearFilters = () => {
+    setFilterExactDate("");
+    setFilterMonth("");
+  };
+
   // Helper for Privilege Color
   const getPrivilegeColor = (p) => {
     if (p === 'VVIP') return 'text-purple-600 bg-purple-100';
@@ -198,6 +230,65 @@ const CustomerList = () => {
           </button>
         </div>
 
+        {/* 🚨 NEW: FILTERS CONTROL BAR */}
+        <div className="bg-white p-4 rounded-xl shadow-sm mb-6 border border-gray-100 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="text-sm font-bold text-gray-500 flex items-center gap-1.5 uppercase tracking-wider">
+              <FontAwesomeIcon icon={faFilter} className="text-blue-500" /> Filter Birthday:
+            </div>
+
+            {/* Month Dropdown Filter */}
+            <div className="flex flex-col">
+              <select
+                value={filterMonth}
+                onChange={(e) => {
+                  setFilterMonth(e.target.value);
+                  setFilterExactDate(""); // clear exact date if shifting to month mode
+                }}
+                className="px-3 py-1.5 rounded-lg border bg-gray-50 text-sm focus:outline-blue-500"
+              >
+                <option value="">All Months</option>
+                <option value="01">January</option>
+                <option value="02">February</option>
+                <option value="03">March</option>
+                <option value="04">April</option>
+                <option value="05">May</option>
+                <option value="06">June</option>
+                <option value="07">July</option>
+                <option value="08">August</option>
+                <option value="09">September</option>
+                <option value="10">October</option>
+                <option value="11">November</option>
+                <option value="12">December</option>
+              </select>
+            </div>
+
+            {/* Exact HTML5 Date Input Filter */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-400 font-bold uppercase">Or Specific Date:</span>
+              <input
+                type="date"
+                value={filterExactDate}
+                onChange={(e) => {
+                  setFilterExactDate(e.target.value);
+                  setFilterMonth(""); // clear month option if targeting explicit day
+                }}
+                className="px-3 py-1 rounded-lg border bg-gray-50 text-sm focus:outline-blue-500"
+              />
+            </div>
+          </div>
+
+          {/* Reset Action Trigger */}
+          {(filterExactDate || filterMonth) && (
+            <button
+              onClick={handleClearFilters}
+              className="px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-xs font-semibold text-gray-600 transition flex items-center gap-1.5"
+            >
+              <FontAwesomeIcon icon={faUndo} /> Reset Filter
+            </button>
+          )}
+        </div>
+
         {/* Table */}
         <div className="bg-white rounded-xl shadow-md overflow-hidden">
           <table className="w-full text-left border-collapse">
@@ -206,6 +297,7 @@ const CustomerList = () => {
                 <th className="py-3 px-4">ID</th>
                 <th className="py-3 px-4">Name</th>
                 <th className="py-3 px-4">Email</th>
+                <th className="py-3 px-4">Date of Birth</th> {/* 🚨 Added Header column */}
                 <th className="py-3 px-4">Total Order</th>
                 <th className="py-3 px-4">Total Spent</th>
                 <th className="py-3 px-4">Privilege</th>
@@ -213,8 +305,9 @@ const CustomerList = () => {
               </tr>
             </thead>
             <tbody className="text-gray-700">
-              {customers.length > 0 ? (
-                customers.map((c) => (
+              {/* 🚨 SWAPPED: loop over filteredCustomers instead of raw customers */}
+              {filteredCustomers.length > 0 ? (
+                filteredCustomers.map((c) => (
                   <tr
                     key={c.customerId}
                     className="border-b hover:bg-gray-50 transition-colors"
@@ -225,6 +318,14 @@ const CustomerList = () => {
                       <div className="text-xs text-gray-400">{c.mobilePhone}</div>
                     </td>
                     <td className="py-3 px-4">{c.email}</td>
+                    
+                    {/* 🚨 Added Table Row Display Data */}
+                    <td className="py-3 px-4 text-sm font-medium text-gray-600">
+                      {c.dateOfBirth ? new Date(c.dateOfBirth).toLocaleDateString() : (
+                        <span className="text-gray-300 italic text-xs">Not Set</span>
+                      )}
+                    </td>
+
                     <td className="py-3 px-4">{c.totalOrder}</td>
                     <td className="py-3 px-4 font-medium">
                        RM {Number(c.totalSpent).toLocaleString()}
@@ -262,8 +363,8 @@ const CustomerList = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="text-center py-6 text-gray-500">
-                    No customers found.
+                  <td colSpan="8" className="text-center py-6 text-gray-500">
+                    No matching customers found.
                   </td>
                 </tr>
               )}

@@ -8,6 +8,7 @@ const navItems = [
   { name: "Member Assignment", path: "/members" },
   { name: "Order", path: "/orders" },
   { name: "Customer", path: "/customers" },
+  { name: "Logistic", path: "/logistic"},
 ];
 
 const TopNav = () => {

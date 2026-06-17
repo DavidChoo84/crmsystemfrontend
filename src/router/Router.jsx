@@ -38,7 +38,8 @@ const Router = () => {
         },
 
         { path: "/members", element: <MemberAssignment /> },
-        { path: "/orders", element: <Order /> },
+        { path: "/orders", element: <Order viewMode="orders" /> },
+        { path: "/logistic", element: <Order viewMode="logistic" /> },
         { path: "/customers", element: <Customer /> },
       ],
     },

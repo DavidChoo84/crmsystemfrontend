@@ -88,7 +88,8 @@ const Order = ({ viewMode = "orders" }) => {
       fetchOrders();
       setShowEditModal(false);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to write order records:", err.response?.data || err.message);
+      alert(`Error: ${err.response?.data?.message || "Check server console"}`);
       showNotification(err.message || "Failed to save order", "error");
     }
   };

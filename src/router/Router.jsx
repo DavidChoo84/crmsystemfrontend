@@ -8,6 +8,7 @@ import Order from "../pages/Order";
 import Customer from "../pages/CustomerList";
 import ProjectRedirect from "../components/ProjectRedirect";
 import PackageList from "../pages/PackageList";
+import Register from "../pages/Register";
 import { Login } from "../pages/Login";
 
 const AuthGuard = () => {
@@ -40,37 +41,46 @@ const Router = () => {
       element: <Login />,
     },
 
+    // 🔒 AUTHENTICATED WRAPPER LAYER
     {
       element: <AuthGuard />,
       children: [
         {
           element: <MainLayout />,
           children: [
-            { path: "/dashboard", element: <Dashboard /> },
-            
-            {
-              path: "/project",
-              element: <ProjectRedirect />,
-            },
-            {
-              path: "/project/:projectName",
-              element: <Project />, 
-            },
-            {
-              path: "/project/:projectName/product-list",
-              element: <ProductList />,
-            },
-            {
-              path: "/project/:projectName/package-list",
-              element: <PackageList />,
+            // 🌎 Shared Routes (All authorized roles: master, logistic, cs_pc)
+            { 
+              element: <RoleGuard allowedRoles={["master", "logistic", "cs_pc"]} />, 
+              children: [
+                { path: "/dashboard", element: <Dashboard /> }
+              ] 
             },
             
-            { path: "/logistic", element: <Order viewMode="logistic" /> },
-
+            // 🏗️ Project Administration (Restricted to master admin only)
             {
               element: <RoleGuard allowedRoles={["master"]} />,
               children: [
+                { path: "/project", element: <ProjectRedirect /> },
                 { path: "/members", element: <MemberAssignment /> },
+                { path: "/register", element: <Register /> },
+              ]
+            },
+            
+            // 📦 Logistics Workflows (Accessible by master & logistic roles)
+            {
+              element: <RoleGuard allowedRoles={["master", "logistic"]} />,
+              children: [
+                { path: "/logistic", element: <Order viewMode="logistic" /> },
+              ]
+            },
+
+            // 🛍️ Customer Service & Sales Management (Accessible by master & cs_pc roles)
+            {
+              element: <RoleGuard allowedRoles={["master", "cs_pc"]} />,
+              children: [
+                { path: "/project/:projectName", element: <Project /> },
+                { path: "/project/:projectName/product-list", element: <ProductList /> },
+                { path: "/project/:projectName/package-list", element: <PackageList /> },
                 { path: "/orders", element: <Order viewMode="orders" /> },
                 { path: "/customers", element: <Customer /> },
               ],

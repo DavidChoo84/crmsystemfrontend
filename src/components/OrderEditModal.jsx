@@ -20,15 +20,8 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
   const initializedOrderId = useRef(null);
 
   // --- CONFIGURATION FLAGS FOR LOGISTIC VIEW ---
-  // Default (Business Logic): Logistics view can ONLY edit Courier/Tracking, locking everything else.
   const lockOrderFields = viewMode === "logistic";     
   const lockLogisticsFields = viewMode !== "logistic"; 
-
-  /* NOTE: If your client wants the exact opposite 
-  (i.e., Logistic view can edit everything EXCEPT courier/tracking), swap to this:
-  const lockOrderFields = false;
-  const lockLogisticsFields = viewMode === "logistic";
-  */
 
   // Helper: Format date to local ISO string (YYYY-MM-DDTHH:mm) for datetime-local input
   const formatLocalDate = (dateInput) => {
@@ -78,7 +71,7 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
         trackingNumber: order.trackingNumber || "",
         paymentType: order.paymentType || "Transfer",
         paymentStatus: order.paymentStatus || "Unpaid",
-        salesperson: order.salesPerson || order.salesperson || "",
+        salesPerson: order.salesPerson || "",
         status: order.status || "Pending",
         channel: order.channel || "Facebook",
         receiptImage: order.receiptImage || ""
@@ -183,9 +176,18 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
   };
 
   const addBlankPackage = () => {
+    // 🔑 FIXED: Custom packages require an empty placeholder item object so NestJS transaction doesn't crash on null properties
     setFormData(prev => ({ 
       ...prev, 
-      orderPackages: [...prev.orderPackages, { packageName: "", packagePrice: 0, quantity: 1, orderProducts: [] }] 
+      orderPackages: [
+        ...prev.orderPackages, 
+        { 
+          packageName: "", 
+          packagePrice: 0, 
+          quantity: 1, 
+          orderProducts: [{ productId: "CUSTOM_ITEM", productName: "Custom Item", quantity: 1 }] 
+        }
+      ] 
     }));
   };
 
@@ -337,7 +339,6 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
             </div>
             <div>
               <label className={labelStyle}><FontAwesomeIcon icon={faClipboardList} className="mr-1" /> Order Status</label>
-              {/* Order Status remains editable by logistics to switch to 'Shipped' or 'Completed' */}
               <select name="status" value={formData.status} onChange={handleChange} className={inputStyle}>
                 <option value="Pending">⏳ Pending</option>
                 <option value="Processing">⚙️ Processing</option>
@@ -358,7 +359,7 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
             </div>
             <div>
               <label className={labelStyle}><FontAwesomeIcon icon={faUserTie} className="mr-1" /> Salesperson</label>
-              <input type="text" name="salesperson" value={formData.salesperson} onChange={handleChange} disabled={lockOrderFields} placeholder="Enter name or ID" className={lockOrderFields ? readOnlyStyle : inputStyle} />
+              <input type="text" name="salesPerson" value={formData.salesPerson} onChange={handleChange} disabled={lockOrderFields} placeholder="Enter name or ID" className={lockOrderFields ? readOnlyStyle : inputStyle} />
             </div>
           </div>
 

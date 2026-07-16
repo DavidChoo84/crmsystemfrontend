@@ -9,8 +9,6 @@ const PackageList = () => {
   const { projectName } = useParams();
   const [packages, setPackages] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
-  
-  // REMOVED: const [projectId, setProjectId] = useState(null); (Redundant)
 
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [editPackage, setEditPackage] = useState(null);
@@ -34,8 +32,15 @@ const PackageList = () => {
 
   const fetchPackages = async () => {
     try {
-      // 1. Fetch Projects
-      const resProjects = await fetch("http://localhost:3000/projects");
+      const token = localStorage.getItem("token"); // 🚀 Get token
+
+      // 1. Fetch Projects (Secured)
+      const resProjects = await fetch("http://localhost:3000/projects", {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
       const projectsData = await resProjects.json();
 
       const matchedProject = projectsData.find(
@@ -50,8 +55,13 @@ const PackageList = () => {
         return;
       }
 
-      // 2. Fetch Packages
-      const resPackages = await fetch("http://localhost:3000/packages");
+      // 2. Fetch Packages (Secured)
+      const resPackages = await fetch("http://localhost:3000/packages", {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
       const packagesData = await resPackages.json();
 
       // 3. Filter & Sort
@@ -73,20 +83,27 @@ const PackageList = () => {
       return;
     }
     try {
-      const res = await fetch("http://localhost:3000/packages/next-id");
+      const token = localStorage.getItem("token"); // 🚀 Get token
+
+      // Fetch next ID (Secured)
+      const res = await fetch("http://localhost:3000/packages/next-id", {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
       if (!res.ok) throw new Error("Failed to get next ID");
       const data = await res.json();
 
       setEditPackage({
         isNew: true,
         packageId: data.nextId,
-        projectId: selectedProject.projectId, // Fix: Use ID string
+        projectId: selectedProject.projectId, 
         packageName: "",
         sellingPrice: 0,
-        shippingCost: 0, // Added based on new Schema
+        shippingCost: 0, 
         totalCost: 0,
         costMargin: 0,
-        // FIX: Replaced flat fields with array
         packageProducts: [] 
       });
 
@@ -102,8 +119,9 @@ const PackageList = () => {
     setShowEditModal(true);
   }
 
-const handleSavePackage = async (updatedPackage) => {
+  const handleSavePackage = async (updatedPackage) => {
     try {
+      const token = localStorage.getItem("token"); // 🚀 Get token
       const isUpdate = !updatedPackage.isNew;
       const url = isUpdate
         ? `http://localhost:3000/packages/${updatedPackage.packageId}`
@@ -111,25 +129,26 @@ const handleSavePackage = async (updatedPackage) => {
       
       const method = isUpdate ? "PATCH" : "POST";
 
-      // 🔴 FIX: Ensure we send 'projectId' (string), NOT 'project' (object)
       const payload = {
         ...updatedPackage,
         projectId: updatedPackage.projectId || selectedProject?.projectId 
       };
 
-      // Clean up: Remove the full project object if it exists to avoid backend confusion
       delete payload.project; 
 
+      // Save request (Secured)
       const res = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload), // Send 'payload' instead of 'bodyData'
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // 🚀 Pass token
+        },
+        body: JSON.stringify(payload), 
       });
 
-      // 🔴 IMPROVEMENT: Log the actual server error if it fails
       if (!res.ok) {
         const errorData = await res.json();
-        console.error("Server Error Detail:", errorData); // This helps you debug!
+        console.error("Server Error Detail:", errorData); 
         throw new Error(errorData.message || "Failed to save package");
       }
 
@@ -152,32 +171,24 @@ const handleSavePackage = async (updatedPackage) => {
       setEditPackage(null);
     } catch (err) {
       console.error("Error saving package:", err);
-      // Show the actual error message from backend if possible
       showNotification(err.message || "Failed to save package", "error");
     }
-  };
-
-  // --- Delete Logic (Same as yours) ---
-  const confirmDelete = (pkg) => {
-    setDeletePackage(pkg);
-    setDeleteModalVisible(true);
-    setTimeout(() => setShowDeleteModal(true), 10);
-  };
-
-  const closeDeleteModal = () => {
-    setShowDeleteModal(false);
-    setTimeout(() => {
-      setDeleteModalVisible(false);
-      setDeletePackage(null);
-    }, 300);
   };
 
   const handleDelete = async () => {
     if (!deletePackage) return;
     try {
+      const token = localStorage.getItem("token"); // 🚀 Get token
+
+      // Delete request (Secured)
       const res = await fetch(
         `http://localhost:3000/packages/${deletePackage.packageId}`,
-        { method: "DELETE" }
+        { 
+          method: "DELETE",
+          headers: {
+            "Authorization": `Bearer ${token}` // 🚀 Pass token
+          }
+        }
       );
       if (!res.ok) throw new Error("Failed to delete");
 
@@ -192,11 +203,23 @@ const handleSavePackage = async (updatedPackage) => {
     }
   };
 
-  // --- Render Helper: Get Package Content Summary ---
+  const confirmDelete = (pkg) => {
+    setDeletePackage(pkg);
+    setDeleteModalVisible(true);
+    setTimeout(() => setShowDeleteModal(true), 10);
+  };
+
+  const closeDeleteModal = () => {
+    setShowDeleteModal(false);
+    setTimeout(() => {
+      setDeleteModalVisible(false);
+      setDeletePackage(null);
+    }, 300);
+  };
+
   const renderPackageContent = (pkg) => {
     if (!pkg.packageProducts || pkg.packageProducts.length === 0) return <span className="text-gray-400 italic">Empty</span>;
     
-    // Show first item name + count of others
     const firstItem = pkg.packageProducts[0]?.product?.productName || "Unknown Item";
     const count = pkg.packageProducts.length;
     
@@ -230,7 +253,7 @@ const handleSavePackage = async (updatedPackage) => {
               <tr>
                 <th className="py-3 px-4">ID</th>
                 <th className="py-3 px-4">Package Name</th>
-                <th className="py-3 px-4">Contents</th> {/* Renamed from Product */}
+                <th className="py-3 px-4">Contents</th>
                 <th className="py-3 px-4">Price</th>
                 <th className="py-3 px-4">Total Cost</th>
                 <th className="py-3 px-4">Margin</th>
@@ -244,10 +267,7 @@ const handleSavePackage = async (updatedPackage) => {
                   <tr key={p.packageId} className="border-b hover:bg-gray-50 transition-colors">
                     <td className="py-3 px-4 font-medium text-blue-600">{p.packageId}</td>
                     <td className="py-3 px-4">{p.packageName}</td>
-                    
-                    {/* NEW: Render Summary of Items */}
                     <td className="py-3 px-4">{renderPackageContent(p)}</td>
-
                     <td className="py-3 px-4">{Number(p.sellingPrice).toFixed(2)}</td>
                     <td className="py-3 px-4">{Number(p.totalCost).toFixed(2)}</td>
                     <td className="py-3 px-4">
@@ -286,14 +306,12 @@ const handleSavePackage = async (updatedPackage) => {
       {showEditModal && editPackage && (
         <PackageEditModal
           pkg={editPackage}
-          // FIX: Pass the actual project ID safely
           projectId={selectedProject?.projectId} 
           onClose={() => setShowEditModal(false)}
           onSave={handleSavePackage}
         />
       )}
 
-      {/* Delete Modal Code ... (kept same as yours) */}
       {deleteModalVisible && deletePackage && (
         <div className={`fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-40 transition-opacity duration-300 ${showDeleteModal ? "opacity-100" : "opacity-0"}`}>
           <div className="bg-white p-8 rounded-2xl shadow-xl w-[420px] text-center">

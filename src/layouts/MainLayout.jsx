@@ -22,6 +22,11 @@ const MainLayout = () => {
 
     const fetchProjects = async () => {
       try {
+        const token = localStorage.getItem("token");
+        
+        // 🔍 ADD THIS LOG TO DEBUG:
+        console.log("Current Frontend Token:", token);
+        
         const res = await fetch("http://localhost:3000/projects", {
           method: "GET",
           headers: {

@@ -37,17 +37,22 @@ const ProductList = () => {
       console.log("🔍 1. Debugging Start...");
       console.log("   URL Param (projectName):", projectName);
 
-      // 1. Fetch Projects
-      const resProjects = await fetch("http://localhost:3000/projects");
+      const token = localStorage.getItem("token"); // 🚀 Get token
+
+      // 1. Fetch Projects (Secured)
+      const resProjects = await fetch("http://localhost:3000/projects", {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
       if (!resProjects.ok) throw new Error("Failed to fetch projects");
       const projectsData = await resProjects.json();
       
       console.log("   Fetched Projects from DB:", projectsData);
 
       // 2. Find the Project
-      // We decode URI component to handle spaces like "Project%20A" -> "Project A"
       const targetName = decodeURIComponent(projectName).toLowerCase();
-      
       const matchedProject = projectsData.find(
         (p) => p.projectName.toLowerCase() === targetName
       );
@@ -64,15 +69,19 @@ const ProductList = () => {
 
       setSelectedProject(matchedProject);
 
-      // 3. Fetch Products
-      const resProducts = await fetch("http://localhost:3000/products");
+      // 3. Fetch Products (Secured)
+      const resProducts = await fetch("http://localhost:3000/products", {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
       const productsData = await resProducts.json();
 
       console.log("   Fetched All Products:", productsData);
 
       // 4. Filter Products
       const filtered = productsData.filter((prod) => {
-        // Safe check: does prod.project exist?
         const prodProjectId = prod.project ? prod.project.projectId : "NULL";
         return prodProjectId === matchedProject.projectId;
       });
@@ -99,8 +108,15 @@ const ProductList = () => {
     }
 
     try {
-      // Fetch next product ID from backend
-      const res = await fetch("http://localhost:3000/products/next-id");
+      const token = localStorage.getItem("token"); // 🚀 Get token
+
+      // Fetch next product ID (Secured)
+      const res = await fetch("http://localhost:3000/products/next-id", {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
       if (!res.ok) throw new Error("Failed to get next product ID");
       const data = await res.json();
 
@@ -131,6 +147,7 @@ const ProductList = () => {
   // Save Product (Add / Update)
   const handleSaveProduct = async (updatedProduct) => {
     try {
+      const token = localStorage.getItem("token"); // 🚀 Get token
       const isUpdate = !updatedProduct.isNew;
       const url = isUpdate
         ? `http://localhost:3000/products/${updatedProduct.productId}`
@@ -141,9 +158,13 @@ const ProductList = () => {
         ? updatedProduct
         : { ...updatedProduct, project: selectedProject };
 
+      // Save request (Secured)
       const res = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // 🚀 Pass token
+        },
         body: JSON.stringify(bodyData),
       });
 
@@ -189,9 +210,17 @@ const ProductList = () => {
     if (!deleteProduct) return;
 
     try {
+      const token = localStorage.getItem("token"); // 🚀 Get token
+
+      // Delete request (Secured)
       const res = await fetch(
         `http://localhost:3000/products/${deleteProduct.productId}`,
-        { method: "DELETE" }
+        { 
+          method: "DELETE",
+          headers: {
+            "Authorization": `Bearer ${token}` // 🚀 Pass token
+          }
+        }
       );
 
       if (!res.ok) throw new Error("Failed to delete product");

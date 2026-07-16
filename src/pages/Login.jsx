@@ -88,6 +88,7 @@ export const Login = () => {
     }
   };
 
+  // 🔧 Patched: now checks response.ok and safely handles non-JSON/failed responses
   const handleForgotPassword = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -100,10 +101,21 @@ export const Login = () => {
         body: JSON.stringify({ email }),
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch {
+        // Response wasn't valid JSON (e.g. server crashed, proxy error page, etc.)
+        throw new Error("Unexpected server response. Please try again.");
+      }
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to send reset link. Try again.");
+      }
+
       setMessage({ type: "success", text: data.message });
     } catch (err) {
-      setMessage({ type: "error", text: "Failed to send reset link. Try again." });
+      setMessage({ type: "error", text: err.message || "Failed to send reset link. Try again." });
     } finally {
       setLoading(false);
     }

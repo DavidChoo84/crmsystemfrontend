@@ -9,14 +9,34 @@ const Sidebar = () => {
   const [expandedProject, setExpandedProject] = useState(null);
 
   useEffect(() => {
-    fetch("http://localhost:3000/projects")
-      .then((res) => res.json())
+    // 1. Grab the token you saved during login
+    const token = localStorage.getItem("token"); 
+
+    fetch("http://localhost:3000/projects", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        // 🚀 Pass the token securely in the Authorization header
+        "Authorization": `Bearer ${token}` 
+      }
+    })
+      .then((res) => {
+        // 2. Safety check: If backend rejects it, don't let it pass to the next .then()
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
       .then((data) => {
-        // 🟩 Sort projects by projectId before setting state
-        const sorted = [...data].sort((a, b) =>
-          a.projectId.localeCompare(b.projectId)
-        );
-        setProjects(sorted);
+        // 3. Ensure data is actually an array before spreading/sorting
+        if (Array.isArray(data)) {
+          const sorted = [...data].sort((a, b) =>
+            a.projectId.localeCompare(b.projectId)
+          );
+          setProjects(sorted);
+        } else {
+          console.error("Expected an array of projects, but received:", data);
+        }
       })
       .catch((err) => console.error("Failed to fetch projects:", err));
   }, []);

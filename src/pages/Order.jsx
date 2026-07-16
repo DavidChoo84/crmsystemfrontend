@@ -26,9 +26,16 @@ const Order = ({ viewMode = "orders" }) => {
     setTimeout(() => setNotification({ message: "", type: "" }), 3000);
   };
 
+  // Fetch Orders (Secured)
   const fetchOrders = async () => {
     try {
-      const res = await fetch("http://localhost:3000/orders");
+      const token = localStorage.getItem("token"); // 🚀 Get token
+      const res = await fetch("http://localhost:3000/orders", {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
       const data = await res.json();
       setOrders(data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
     } catch (error) {
@@ -41,35 +48,67 @@ const Order = ({ viewMode = "orders" }) => {
     setShowEditModal(true);
   };
 
+  // Mark Order as Sent (Secured & Logistic Only)
+  const handleMarkAsSent = async (orderId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`http://localhost:3000/orders/${orderId}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: "Shipped" }) // 🌟 Changed from "Sent" to "Shipped"
+      });
+
+      if (!res.ok) throw new Error("Failed to mark order as shipped.");
+
+      // Instantly update UI status to lock it out using "Shipped"
+      setOrders((prev) =>
+        prev.map((ord) => (ord.orderId === orderId ? { ...ord, status: "Shipped" } : ord)) // 🌟 Changed here
+      );
+
+      showNotification("Order marked as Shipped! Record is now locked.");
+    } catch (err) {
+      console.error("Failed to ship order:", err.message);
+      showNotification(err.message || "Failed to update status", "error");
+    }
+  };
+
+  // Save/Update Order (Secured)
   const handleSaveOrder = async (orderData, rawFile) => {
     try {
+      const token = localStorage.getItem("token"); // 🚀 Get token
       const isUpdate = !orderData.isNew;
       let finalReceiptUrl = orderData.receiptUrl || "";
 
-      // 1. If a new file was chosen, upload it to the backend first
+      // 1. Upload receipt if file exists (Secured)
       if (rawFile) {
         const formData = new FormData();
         formData.append("file", rawFile);
 
         const uploadRes = await fetch("http://localhost:3000/orders/upload", {
           method: "POST",
-          body: formData, // Browser automatically sets 'multipart/form-data' headers
+          headers: {
+            "Authorization": `Bearer ${token}` // Pass token safely without breaking multipart boundary
+          },
+          body: formData, 
         });
 
         if (!uploadRes.ok) throw new Error("Receipt file upload failed.");
         
         const uploadData = await uploadRes.json();
-        finalReceiptUrl = uploadData.filePath; // e.g., 'uploads/receipt-xyz.jpg'
+        finalReceiptUrl = uploadData.filePath; 
       }
 
-      // 2. Prepare the clean JSON payload with the receipt URL attached
+      // 2. Prepare JSON payload
       const url = isUpdate 
         ? `http://localhost:3000/orders/${orderData.orderId}` 
         : `http://localhost:3000/orders`;
       
       const payload = { 
         ...orderData, 
-        receiptUrl: finalReceiptUrl, // Saved in DB columns
+        receiptUrl: finalReceiptUrl, 
         shippingFee: Number(orderData.shippingFee || 0), 
         totalAmount: Number(orderData.totalAmount || 0), 
         orderDate: orderData.orderDate ? new Date(orderData.orderDate).toISOString() : new Date().toISOString() 
@@ -78,7 +117,10 @@ const Order = ({ viewMode = "orders" }) => {
 
       const res = await fetch(url, { 
         method: isUpdate ? "PATCH" : "POST", 
-        headers: { "Content-Type": "application/json" }, 
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // 🚀 Pass token
+        }, 
         body: JSON.stringify(payload) 
       });
       
@@ -88,15 +130,22 @@ const Order = ({ viewMode = "orders" }) => {
       fetchOrders();
       setShowEditModal(false);
     } catch (err) {
-      console.error("Failed to write order records:", err.response?.data || err.message);
-      alert(`Error: ${err.response?.data?.message || "Check server console"}`);
+      console.error("Failed to write order records:", err.message);
+      alert(`Error: ${err.message || "Check server console"}`);
       showNotification(err.message || "Failed to save order", "error");
     }
   };
 
+  // Delete Order (Secured)
   const handleDelete = async () => {
     try {
-      const res = await fetch(`http://localhost:3000/orders/${deleteOrder.orderId}`, { method: "DELETE" });
+      const token = localStorage.getItem("token"); // 🚀 Get token
+      const res = await fetch(`http://localhost:3000/orders/${deleteOrder.orderId}`, { 
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
       if (!res.ok) throw new Error();
       setOrders((prev) => prev.filter((o) => o.orderId !== deleteOrder.orderId));
       showNotification("Order deleted successfully");
@@ -124,12 +173,10 @@ const Order = ({ viewMode = "orders" }) => {
 
       <div className="flex-1 p-6 bg-gray-50 min-h-screen">
         <div className="flex justify-between items-center mb-6">
-          {/* ✅ Dynamic Heading Title based on viewMode */}
           <h2 className="text-2xl font-semibold text-gray-800">
             {viewMode === "logistic" ? "Logistic Management" : "Order Management"}
           </h2>
           
-          {/* ✅ Hide the New Order button if we are in logistic view mode */}
           {viewMode !== "logistic" && (
             <button onClick={handleAdd} className="flex items-center gap-2 px-5 py-2 rounded-full bg-blue-600 text-white font-medium hover:bg-blue-700 transition">
               <FontAwesomeIcon icon={faPlus} /> New Order
@@ -137,17 +184,17 @@ const Order = ({ viewMode = "orders" }) => {
           )}
         </div>
 
-        {/* Modular Filter Call */}
         <OrderFilters 
           filterMonth={filterMonth} setFilterMonth={setFilterMonth} 
           filterExactDate={filterExactDate} setFilterExactDate={setFilterExactDate} 
         />
 
-        {/* Modular Table Grid Call — Passed down viewMode */}
+        {/* ✅ Passed onMarkAsSent to the table layout */}
         <OrderTable 
           orders={filteredOrders} 
           viewMode={viewMode}
           onSelect={setSelectedOrder} 
+          onMarkAsSent={handleMarkAsSent}
           onEdit={(order) => { setEditOrder({ ...order, isNew: false }); setShowEditModal(true); }} 
           onDelete={(order) => { setDeleteOrder(order); setDeleteModalVisible(true); setTimeout(() => setShowDeleteModal(true), 10); }} 
         />
@@ -155,7 +202,6 @@ const Order = ({ viewMode = "orders" }) => {
 
       {selectedOrder && <OrderDetailModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />}
       
-      {/* ✅ Passed viewMode to Edit Modal so it can toggle input disable fields */}
       {showEditModal && editOrder && (
         <OrderEditModal 
           order={editOrder} 

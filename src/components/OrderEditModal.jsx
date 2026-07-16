@@ -339,8 +339,7 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
             </div>
             <div>
               <label className={labelStyle}><FontAwesomeIcon icon={faClipboardList} className="mr-1" /> Order Status</label>
-              <select name="status" value={formData.status} onChange={handleChange} className={inputStyle}>
-                <option value="Pending">⏳ Pending</option>
+              <select name="status" value={formData.status} onChange={handleChange} disabled={lockOrderFields} className={lockOrderFields ? readOnlyStyle : inputStyle}>
                 <option value="Processing">⚙️ Processing</option>
                 <option value="Shipped">📦 Shipped</option>
                 <option value="Completed">✅ Completed</option>

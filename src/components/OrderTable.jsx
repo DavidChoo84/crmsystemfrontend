@@ -1,12 +1,13 @@
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEye, faPenToSquare, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faEye, faPenToSquare, faTrash, faPaperPlane } from "@fortawesome/free-solid-svg-icons";
 
-export const OrderTable = ({ orders, viewMode = "orders", onSelect, onEdit, onDelete }) => {
+export const OrderTable = ({ orders, viewMode = "orders", onSelect, onEdit, onDelete, onMarkAsSent }) => {
   const getStatusColor = (status) => {
     switch (status) {
       case "Completed": return "bg-green-100 text-green-800";
       case "Shipped": return "bg-blue-100 text-blue-800";
+      case "Sent": return "bg-purple-100 text-purple-800"; // 🌟 Style for Sent status
       case "Processing": return "bg-yellow-100 text-yellow-800";
       case "Cancelled": return "bg-red-100 text-red-800";
       default: return "bg-gray-100 text-gray-800";
@@ -51,7 +52,20 @@ export const OrderTable = ({ orders, viewMode = "orders", onSelect, onEdit, onDe
                   </span>
                 </td>
                 <td className="py-3 px-4">
-                  <div className="flex justify-center gap-2">
+                  <div className="flex justify-center gap-2 items-center">
+                    
+                    {/* 🚀 1. LOGISTIC ONLY: Button displays if viewMode is logistic and NOT yet Shipped */}
+                    {viewMode === "logistic" && order.status !== "Shipped" && (
+                      <button 
+                        className="p-2 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-700 transition-colors"
+                        onClick={() => onMarkAsSent(order.orderId)}
+                        title="Mark as Shipped"
+                      >
+                        <FontAwesomeIcon icon={faPaperPlane} />
+                      </button>
+                    )}
+
+                    {/* Standard View Details Button */}
                     <button 
                       className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-yellow-600 transition-colors" 
                       onClick={() => onSelect(order)}
@@ -60,24 +74,36 @@ export const OrderTable = ({ orders, viewMode = "orders", onSelect, onEdit, onDe
                       <FontAwesomeIcon icon={faEye} />
                     </button>
                     
+                    {/* 🔒 2. MODIFIED EDIT BUTTON: Disabled if order status is 'Shipped' */}
                     <button 
-                      className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-blue-600 transition-colors" 
+                      disabled={order.status === "Shipped"}
                       onClick={() => onEdit(order)}
-                      title="Edit Order"
+                      className={`p-2 rounded-lg transition-colors ${
+                        order.status === "Shipped"
+                          ? "bg-gray-50 text-gray-300 cursor-not-allowed opacity-60"
+                          : "bg-gray-100 hover:bg-gray-200 text-blue-600"
+                      }`}
+                      title={order.status === "Shipped" ? "Shipped orders are locked and cannot be edited" : "Edit Order"}
                     >
                       <FontAwesomeIcon icon={faPenToSquare} />
                     </button>
                     
-                    {/* 🚫 CONDITIONAL DELETE BUTTON DISABLING */}
+                    {/* 🔒 3. MODIFIED DELETE BUTTON: Disabled if viewMode is 'logistic' OR status is 'Shipped' */}
                     <button 
-                      disabled={viewMode === "logistic"}
+                      disabled={viewMode === "logistic" || order.status === "Shipped"}
                       onClick={() => onDelete(order)}
                       className={`p-2 rounded-lg transition-colors ${
-                        viewMode === "logistic"
+                        (viewMode === "logistic" || order.status === "Shipped")
                           ? "bg-gray-50 text-gray-300 cursor-not-allowed opacity-60"
                           : "bg-gray-100 hover:bg-gray-200 text-red-600"
                       }`}
-                      title={viewMode === "logistic" ? "Delete disabled in logistic view" : "Delete Order"}
+                      title={
+                        order.status === "Shipped" 
+                          ? "Shipped orders cannot be deleted" 
+                          : viewMode === "logistic" 
+                            ? "Delete disabled in logistic view" 
+                            : "Delete Order"
+                      }
                     >
                       <FontAwesomeIcon icon={faTrash} />
                     </button>

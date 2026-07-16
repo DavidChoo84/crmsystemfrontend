@@ -1,4 +1,4 @@
-import { useRoutes, Navigate, Outlet } from "react-router-dom";
+import { useRoutes, Navigate, Outlet, useOutletContext} from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import Dashboard from "../pages/Dashboard";
 import Project from "../pages/Project";
@@ -14,16 +14,18 @@ import { Login } from "../pages/Login";
 const AuthGuard = () => {
   const token = localStorage.getItem("token");
   const user = localStorage.getItem("user");
+  const context = useOutletContext(); // 🔑 Catch context from upstream
 
-  return token && user ? <Outlet /> : <Navigate to="/login" replace />;
+  return token && user ? <Outlet context={context} /> : <Navigate to="/login" replace />;
 };
 
 const RoleGuard = ({ allowedRoles }) => {
   const userJson = localStorage.getItem("user");
   const user = userJson ? JSON.parse(userJson) : null;
+  const context = useOutletContext(); // 🔑 Catch context from MainLayout
 
   return user && allowedRoles.includes(user.role) ? (
-    <Outlet />
+    <Outlet context={context} /> // 🔑 Forward it safely to ProjectRedirect and other pages!
   ) : (
     <Navigate to="/dashboard" replace />
   );
@@ -60,7 +62,6 @@ const Router = () => {
             {
               element: <RoleGuard allowedRoles={["master"]} />,
               children: [
-                { path: "/project", element: <ProjectRedirect /> },
                 { path: "/members", element: <MemberAssignment /> },
                 { path: "/register", element: <Register /> },
               ]
@@ -78,6 +79,7 @@ const Router = () => {
             {
               element: <RoleGuard allowedRoles={["master", "cs_pc"]} />,
               children: [
+                { path: "/project", element: <ProjectRedirect /> },
                 { path: "/project/:projectName", element: <Project /> },
                 { path: "/project/:projectName/product-list", element: <ProductList /> },
                 { path: "/project/:projectName/package-list", element: <PackageList /> },

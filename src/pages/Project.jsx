@@ -5,7 +5,7 @@ import {
   faFolderOpen, faBox, faLayerGroup, faUserGear, 
   faBullseye, faChartLine, faChevronRight, faHashtag, 
   faPlus, faPen, faTrash, faExclamationTriangle, faTimes,
-  faFolder // Added for the empty state icon
+  faFolder 
 } from "@fortawesome/free-solid-svg-icons";
 import ProjectEditModal from "../components/ProjectEditModal";
 
@@ -14,7 +14,7 @@ const Project = () => {
   const { projectName } = useParams();
   
   const [projectData, setProjectData] = useState(null);
-  const [allProjects, setAllProjects] = useState([]); // Track all projects to check for empty state
+  const [allProjects, setAllProjects] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [modalMode, setModalMode] = useState(null); 
   const [isDeleting, setIsDeleting] = useState(false);
@@ -23,21 +23,29 @@ const Project = () => {
     if (projectName) {
       fetchProjectDetails();
     } else {
-      fetchAllProjects(); // Check if any projects exist at the base /project route
+      fetchAllProjects(); 
     }
   }, [projectName]);
 
+  // --- API GET REQUESTS (WITH HEADERS) ---
   const fetchProjectDetails = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:3000/projects/name/${encodeURIComponent(projectName)}`);
+      const token = localStorage.getItem("token"); // 🚀 Get the token
+      const res = await fetch(`http://localhost:3000/projects/name/${encodeURIComponent(projectName)}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // 🚀 Pass token to authorization header
+        }
+      });
       if (!res.ok) throw new Error("Not found");
       const data = await res.json();
       setProjectData(data);
     } catch (err) {
       console.error("Project not found", err);
       setProjectData(null);
-      fetchAllProjects(); // Fallback to check if we should show the empty state
+      fetchAllProjects(); 
     } finally {
       setLoading(false);
     }
@@ -46,12 +54,17 @@ const Project = () => {
   const fetchAllProjects = async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:3000/projects");
+      const token = localStorage.getItem("token"); // 🚀 Get the token
+      const res = await fetch("http://localhost:3000/projects", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // 🚀 Pass token to authorization header
+        }
+      });
       const data = await res.json();
       setAllProjects(data);
       
-      // If we are at the base /project route and projects exist, 
-      // maybe redirect to the first one?
       if (!projectName && data.length > 0) {
         navigate(`/project/${encodeURIComponent(data[0].projectName)}`);
       }
@@ -62,21 +75,33 @@ const Project = () => {
     }
   };
 
-  // --- API HANDLERS ---
+  // --- API MUTATION HANDLERS (WITH HEADERS) ---
   const handleSaveNewProject = async (formData) => {
-    const res = await fetch("http://localhost:3000/projects", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formData),
-    });
-    if (res.ok) window.location.href = `/project/${encodeURIComponent(formData.projectName)}`;
+    try {
+      const token = localStorage.getItem("token"); // 🚀 Get the token
+      const res = await fetch("http://localhost:3000/projects", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // 🚀 Pass token to authorization header
+        },
+        body: JSON.stringify(formData),
+      });
+      if (res.ok) window.location.href = `/project/${encodeURIComponent(formData.projectName)}`;
+    } catch (err) {
+      console.error("Creation failed", err);
+    }
   };
 
   const handleUpdateProject = async (formData) => {
     try {
+      const token = localStorage.getItem("token"); // 🚀 Get the token
       const res = await fetch(`http://localhost:3000/projects/${projectData.projectId}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // 🚀 Pass token to authorization header
+        },
         body: JSON.stringify({ projectName: formData.projectName }),
       });
 
@@ -96,13 +121,17 @@ const Project = () => {
   const handleDeleteProject = async () => {
     setIsDeleting(true);
     try {
+      const token = localStorage.getItem("token"); // 🚀 Get the token
       const res = await fetch(`http://localhost:3000/projects/${projectData.projectId}`, {
         method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // 🚀 Pass token to authorization header
+        }
       });
       if (res.ok) {
         setModalMode(null);
-        // Navigate to base route to trigger the check for remaining projects
-        window.location.href = "/project"
+        window.location.href = "/project";
       }
     } catch (err) {
       console.error("Delete failed", err);
@@ -154,7 +183,6 @@ const Project = () => {
     );
   }
 
-  // Fallback if URL exists but data didn't load properly
   if (!projectData) return <div className="p-10 text-red-500 font-bold text-center">Project "{projectName}" not found.</div>;
 
   // --- RENDER PROJECT VIEW ---
@@ -218,7 +246,7 @@ const Project = () => {
         ))}
       </div>
 
-      {/* MODALS (Edit/Create/Delete logic remains the same) */}
+      {/* MODALS */}
       {(modalMode === 'create' || modalMode === 'edit') && (
         <ProjectEditModal 
           project={modalMode === 'create' ? { isNew: true, projectName: "" } : { ...projectData, isNew: false }} 
@@ -228,34 +256,33 @@ const Project = () => {
       )}
 
       {modalMode === 'delete' && (
-        /* ... your existing Delete modal code ... */
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg flex flex-col overflow-hidden transform transition-all">
-              <div className="flex justify-between items-center bg-gradient-to-r from-red-600 to-rose-600 px-8 py-6">
-                <h3 className="text-xl font-bold text-white flex items-center gap-3">
-                  <FontAwesomeIcon icon={faExclamationTriangle} />
-                  Delete Project
-                </h3>
-                <button onClick={() => setModalMode(null)} className="text-red-200 hover:text-white transition-colors p-2">
-                  <FontAwesomeIcon icon={faTimes} size="lg" />
-                </button>
-              </div>
-              <div className="p-8 space-y-6 text-center">
-                <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto text-red-500 text-3xl mb-2">
-                  <FontAwesomeIcon icon={faTrash} />
-                </div>
-                <h4 className="text-2xl font-black text-gray-900">Are you absolutely sure?</h4>
-                <p className="text-gray-500 leading-relaxed">
-                  You are about to permanently delete <strong className="text-gray-900">{projectData.projectName}</strong>. This action cannot be undone.
-                </p>
-              </div>
-              <div className="flex flex-col sm:flex-row justify-end gap-3 px-8 py-6 bg-gray-50 border-t">
-                <button onClick={() => setModalMode(null)} className="px-6 py-3 rounded-xl text-gray-500 font-bold hover:bg-gray-200 transition-colors">Cancel</button>
-                <button onClick={handleDeleteProject} disabled={isDeleting} className="px-10 py-3 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 active:scale-95 transition-all">
-                  {isDeleting ? "Deleting..." : "Yes, Delete Project"}
-                </button>
-              </div>
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg flex flex-col overflow-hidden transform transition-all">
+            <div className="flex justify-between items-center bg-gradient-to-r from-red-600 to-rose-600 px-8 py-6">
+              <h3 className="text-xl font-bold text-white flex items-center gap-3">
+                <FontAwesomeIcon icon={faExclamationTriangle} />
+                Delete Project
+              </h3>
+              <button onClick={() => setModalMode(null)} className="text-red-200 hover:text-white transition-colors p-2">
+                <FontAwesomeIcon icon={faTimes} size="lg" />
+              </button>
             </div>
+            <div className="p-8 space-y-6 text-center">
+              <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto text-red-500 text-3xl mb-2">
+                <FontAwesomeIcon icon={faTrash} />
+              </div>
+              <h4 className="text-2xl font-black text-gray-900">Are you absolutely sure?</h4>
+              <p className="text-gray-500 leading-relaxed">
+                You are about to permanently delete <strong className="text-gray-900">{projectData.projectName}</strong>. This action cannot be undone.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row justify-end gap-3 px-8 py-6 bg-gray-50 border-t">
+              <button onClick={() => setModalMode(null)} className="px-6 py-3 rounded-xl text-gray-500 font-bold hover:bg-gray-200 transition-colors">Cancel</button>
+              <button onClick={handleDeleteProject} disabled={isDeleting} className="px-10 py-3 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 active:scale-95 transition-all">
+                {isDeleting ? "Deleting..." : "Yes, Delete Project"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

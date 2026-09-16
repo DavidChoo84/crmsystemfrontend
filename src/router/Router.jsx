@@ -10,6 +10,10 @@ import ProjectRedirect from "../components/ProjectRedirect";
 import PackageList from "../pages/PackageList";
 import Register from "../pages/Register";
 import { Login } from "../pages/Login";
+import { ResetPassword } from "../pages/ResetPassword";
+import ProjectTarget from "../pages/ProjectTarget";
+import Reports from "../pages/Reports";
+import ProjectMembers from "../pages/ProjectMembers";
 
 const AuthGuard = () => {
   const token = localStorage.getItem("token");
@@ -43,6 +47,11 @@ const Router = () => {
       element: <Login />,
     },
 
+    {
+      path: "/reset-password",
+      element: <ResetPassword />,
+    },
+
     // 🔒 AUTHENTICATED WRAPPER LAYER
     {
       element: <AuthGuard />,
@@ -63,6 +72,7 @@ const Router = () => {
               element: <RoleGuard allowedRoles={["master"]} />,
               children: [
                 { path: "/members", element: <MemberAssignment /> },
+                { path: "/project/:projectName/members", element: <ProjectMembers /> },
                 { path: "/register", element: <Register /> },
               ]
             },
@@ -83,6 +93,8 @@ const Router = () => {
                 { path: "/project/:projectName", element: <Project /> },
                 { path: "/project/:projectName/product-list", element: <ProductList /> },
                 { path: "/project/:projectName/package-list", element: <PackageList /> },
+                { path: "/project/:projectName/target", element: <ProjectTarget /> },
+                { path: "/project/:projectName/reports", element: <Reports /> },
                 { path: "/orders", element: <Order viewMode="orders" /> },
                 { path: "/customers", element: <Customer /> },
               ],

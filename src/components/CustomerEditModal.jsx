@@ -27,7 +27,13 @@ const CustomerEditModal = ({ customer, onClose, onSave }) => {
 
   useEffect(() => {
     if (customer) {
-      setFormData({
+      // 🔧 FIX: merge with previous state instead of replacing it outright —
+      // otherwise any field missing from the incoming `customer` object
+      // (e.g. fbName, address, postCode, city, state, or customerId when
+      // opened from OrderEditModal) collapses to `undefined` instead of
+      // keeping its sensible default.
+      setFormData((prev) => ({
+        ...prev,
         ...customer,
         isNew: customer.isNew || false,
         // Format dates for HTML input types
@@ -37,7 +43,7 @@ const CustomerEditModal = ({ customer, onClose, onSave }) => {
         dateOfBirth: customer.dateOfBirth 
           ? new Date(customer.dateOfBirth).toISOString().split('T')[0] 
           : ""
-      });
+      }));
     }
   }, [customer]);
 
@@ -62,6 +68,11 @@ const CustomerEditModal = ({ customer, onClose, onSave }) => {
     // 2. Final check before submission
     if (formData.postCode && formData.postCode.length !== 5) {
       alert("Please enter a valid 5-digit postcode.");
+      return;
+    }
+
+    if (formData.isNew && !formData.customerId) {
+      alert("Missing customer ID — please close and reopen this form.");
       return;
     }
     

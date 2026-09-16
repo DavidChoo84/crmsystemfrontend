@@ -1,8 +1,10 @@
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEye, faPenToSquare, faTrash, faPaperPlane } from "@fortawesome/free-solid-svg-icons";
+import { faEye, faPenToSquare, faBan, faPaperPlane, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
 
-export const OrderTable = ({ orders, viewMode = "orders", onSelect, onEdit, onDelete, onMarkAsSent }) => {
+export const OrderTable = ({ orders, viewMode = "orders", onSelect, onEdit, onCancel, onMarkAsSent, onMarkAsFailed }) => {
+  const isLogistic = viewMode === "logistic";
+
   const getStatusColor = (status) => {
     switch (status) {
       case "Completed": return "bg-green-100 text-green-800";
@@ -14,6 +16,12 @@ export const OrderTable = ({ orders, viewMode = "orders", onSelect, onEdit, onDe
     }
   };
 
+  const getPackageNames = (order) => {
+    if (!order.orderPackages || order.orderPackages.length === 0) return "—";
+    const names = order.orderPackages.map((p) => p.packageName).filter(Boolean);
+    return names.length > 0 ? names.join(", ") : "—";
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-md overflow-hidden">
       <table className="w-full text-left border-collapse">
@@ -22,7 +30,13 @@ export const OrderTable = ({ orders, viewMode = "orders", onSelect, onEdit, onDe
             <th className="py-3 px-4">Order ID</th>
             <th className="py-3 px-4">Date</th>
             <th className="py-3 px-4">Customer</th>
-            <th className="py-3 px-4">Channel</th>
+            {!isLogistic && <th className="py-3 px-4">Channel</th>}
+            {isLogistic && (
+              <>
+                <th className="py-3 px-4">Package Name</th>
+                <th className="py-3 px-4">Tracking Number</th>
+              </>
+            )}
             <th className="py-3 px-4">Total (RM)</th>
             <th className="py-3 px-4">Status</th>
             <th className="py-3 px-4 text-center">Actions</th>
@@ -40,11 +54,24 @@ export const OrderTable = ({ orders, viewMode = "orders", onSelect, onEdit, onDe
                   <div className="font-medium">{order.customer?.name || order.customerName || "N/A"}</div>
                   <div className="text-xs text-gray-500">{order.customer?.mobilePhone || order.contactNumber || ""}</div>
                 </td>
-                <td className="py-3 px-4 text-sm">
-                  <span className="text-xs border px-2 py-0.5 rounded-full bg-gray-50">
-                    {order.channel || order.orderType || "Direct"}
-                  </span>
-                </td>
+
+                {!isLogistic && (
+                  <td className="py-3 px-4 text-sm">
+                    <span className="text-xs border px-2 py-0.5 rounded-full bg-gray-50">
+                      {order.channel || order.orderType || "Direct"}
+                    </span>
+                  </td>
+                )}
+
+                {isLogistic && (
+                  <>
+                    <td className="py-3 px-4 text-sm">{getPackageNames(order)}</td>
+                    <td className="py-3 px-4 text-sm font-mono">
+                      {order.trackingNumber || "—"}
+                    </td>
+                  </>
+                )}
+
                 <td className="py-3 px-4 font-semibold">{Number(order.totalAmount).toFixed(2)}</td>
                 <td className="py-3 px-4">
                   <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(order.status)}`}>
@@ -55,13 +82,24 @@ export const OrderTable = ({ orders, viewMode = "orders", onSelect, onEdit, onDe
                   <div className="flex justify-center gap-2 items-center">
                     
                     {/* 🚀 1. LOGISTIC ONLY: Button displays if viewMode is logistic and NOT yet Shipped */}
-                    {viewMode === "logistic" && order.status !== "Shipped" && (
+                    {isLogistic && order.status !== "Shipped" && (
                       <button 
                         className="p-2 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-700 transition-colors"
                         onClick={() => onMarkAsSent(order.orderId)}
                         title="Mark as Shipped"
                       >
                         <FontAwesomeIcon icon={faPaperPlane} />
+                      </button>
+                    )}
+
+                    {/* 🔁 LOGISTIC ONLY: Revert to Pending if delivery failed after being marked Shipped */}
+                    {isLogistic && order.status === "Shipped" && (
+                      <button 
+                        className="p-2 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 transition-colors"
+                        onClick={() => onMarkAsFailed(order.orderId)}
+                        title="Delivery Failed — Return to Pending"
+                      >
+                        <FontAwesomeIcon icon={faRotateLeft} />
                       </button>
                     )}
 
@@ -88,24 +126,29 @@ export const OrderTable = ({ orders, viewMode = "orders", onSelect, onEdit, onDe
                       <FontAwesomeIcon icon={faPenToSquare} />
                     </button>
                     
-                    {/* 🔒 3. MODIFIED DELETE BUTTON: Disabled if viewMode is 'logistic' OR status is 'Shipped' */}
+                    {/* 🚫 Cancel Order: soft-cancels via status change instead of deleting the record.
+                        Disabled in logistic view, and once the order is already Shipped/Completed/Cancelled. */}
                     <button 
-                      disabled={viewMode === "logistic" || order.status === "Shipped"}
-                      onClick={() => onDelete(order)}
+                      disabled={isLogistic || ["Shipped", "Completed", "Cancelled"].includes(order.status)}
+                      onClick={() => onCancel(order)}
                       className={`p-2 rounded-lg transition-colors ${
-                        (viewMode === "logistic" || order.status === "Shipped")
+                        (isLogistic || ["Shipped", "Completed", "Cancelled"].includes(order.status))
                           ? "bg-gray-50 text-gray-300 cursor-not-allowed opacity-60"
                           : "bg-gray-100 hover:bg-gray-200 text-red-600"
                       }`}
                       title={
-                        order.status === "Shipped" 
-                          ? "Shipped orders cannot be deleted" 
-                          : viewMode === "logistic" 
-                            ? "Delete disabled in logistic view" 
-                            : "Delete Order"
+                        order.status === "Cancelled"
+                          ? "Order already cancelled"
+                          : order.status === "Shipped"
+                            ? "Shipped orders cannot be cancelled"
+                            : order.status === "Completed"
+                              ? "Completed orders cannot be cancelled"
+                              : isLogistic 
+                                ? "Cancel disabled in logistic view" 
+                                : "Cancel Order"
                       }
                     >
-                      <FontAwesomeIcon icon={faTrash} />
+                      <FontAwesomeIcon icon={faBan} />
                     </button>
                   </div>
                 </td>
@@ -113,7 +156,7 @@ export const OrderTable = ({ orders, viewMode = "orders", onSelect, onEdit, onDe
             ))
           ) : (
             <tr>
-              <td colSpan="7" className="text-center py-8 text-gray-400 italic bg-gray-50/50">
+              <td colSpan={isLogistic ? 8 : 7} className="text-center py-8 text-gray-400 italic bg-gray-50/50">
                 No matching orders found.
               </td>
             </tr>

@@ -11,9 +11,12 @@ const Order = ({ viewMode = "orders" }) => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [editOrder, setEditOrder] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [deleteOrder, setDeleteOrder] = useState(null);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+
+  // 🔧 Renamed from delete* to cancel* — this now soft-cancels an order
+  // (status -> "Cancelled") instead of removing the row entirely.
+  const [cancelOrder, setCancelOrder] = useState(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelModalVisible, setCancelModalVisible] = useState(false);
   
   const [filterExactDate, setFilterExactDate] = useState("");
   const [filterMonth, setFilterMonth] = useState("");
@@ -71,6 +74,32 @@ const Order = ({ viewMode = "orders" }) => {
       showNotification("Order marked as Shipped! Record is now locked.");
     } catch (err) {
       console.error("Failed to ship order:", err.message);
+      showNotification(err.message || "Failed to update status", "error");
+    }
+  };
+
+  // Revert Order to Pending (Secured & Logistic Only) — used when a "Shipped" parcel fails to deliver
+  const handleMarkAsFailed = async (orderId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`http://localhost:3000/orders/${orderId}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: "Pending" })
+      });
+
+      if (!res.ok) throw new Error("Failed to revert order to Pending.");
+
+      setOrders((prev) =>
+        prev.map((ord) => (ord.orderId === orderId ? { ...ord, status: "Pending" } : ord))
+      );
+
+      showNotification("Order returned to Pending. Record is unlocked again.");
+    } catch (err) {
+      console.error("Failed to revert order:", err.message);
       showNotification(err.message || "Failed to update status", "error");
     }
   };
@@ -136,25 +165,40 @@ const Order = ({ viewMode = "orders" }) => {
     }
   };
 
-  // Delete Order (Secured)
-  const handleDelete = async () => {
+  // Cancel Order (Secured) — soft-cancel via status change, record is preserved
+  const handleCancelOrder = async () => {
+    if (!cancelOrder) return;
     try {
-      const token = localStorage.getItem("token"); // 🚀 Get token
-      const res = await fetch(`http://localhost:3000/orders/${deleteOrder.orderId}`, { 
-        method: "DELETE",
+      const token = localStorage.getItem("token");
+      const res = await fetch(`http://localhost:3000/orders/${cancelOrder.orderId}/status`, {
+        method: "PATCH",
         headers: {
+          "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
-        }
+        },
+        body: JSON.stringify({ status: "Cancelled" })
       });
-      if (!res.ok) throw new Error();
-      setOrders((prev) => prev.filter((o) => o.orderId !== deleteOrder.orderId));
-      showNotification("Order deleted successfully");
-    } catch {
-      showNotification("Failed to delete", "error");
+
+      if (!res.ok) throw new Error("Failed to cancel order.");
+
+      setOrders((prev) =>
+        prev.map((o) => (o.orderId === cancelOrder.orderId ? { ...o, status: "Cancelled" } : o))
+      );
+      showNotification("Order cancelled. Record has been kept.");
+    } catch (err) {
+      console.error("Failed to cancel order:", err.message);
+      showNotification(err.message || "Failed to cancel order", "error");
     } finally {
-      setShowDeleteModal(false);
-      setDeleteModalVisible(false);
+      closeCancelModal();
     }
+  };
+
+  const closeCancelModal = () => {
+    setShowCancelModal(false);
+    setTimeout(() => {
+      setCancelModalVisible(false);
+      setCancelOrder(null);
+    }, 300);
   };
 
   // Filter Logic Engine
@@ -189,14 +233,15 @@ const Order = ({ viewMode = "orders" }) => {
           filterExactDate={filterExactDate} setFilterExactDate={setFilterExactDate} 
         />
 
-        {/* ✅ Passed onMarkAsSent to the table layout */}
+        {/* ✅ Passed onMarkAsSent, onMarkAsFailed, and onCancel to the table layout */}
         <OrderTable 
           orders={filteredOrders} 
           viewMode={viewMode}
           onSelect={setSelectedOrder} 
           onMarkAsSent={handleMarkAsSent}
+          onMarkAsFailed={handleMarkAsFailed}
           onEdit={(order) => { setEditOrder({ ...order, isNew: false }); setShowEditModal(true); }} 
-          onDelete={(order) => { setDeleteOrder(order); setDeleteModalVisible(true); setTimeout(() => setShowDeleteModal(true), 10); }} 
+          onCancel={(order) => { setCancelOrder(order); setCancelModalVisible(true); setTimeout(() => setShowCancelModal(true), 10); }} 
         />
       </div>
 
@@ -211,14 +256,18 @@ const Order = ({ viewMode = "orders" }) => {
         />
       )}
       
-      {deleteModalVisible && deleteOrder && (
-        <div className={`fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-40 transition-opacity duration-300 ${showDeleteModal ? "opacity-100" : "opacity-0"}`}>
-          <div className={`bg-white p-8 rounded-2xl shadow-xl w-[420px] text-center transform transition-transform duration-300 ${showDeleteModal ? "translate-y-0 opacity-100" : "-translate-y-10 opacity-0"}`}>
-            <h3 className="text-xl font-semibold mb-4 text-gray-800">Delete Order?</h3>
-            <p className="text-gray-600 mb-6">Are you sure you want to delete <span className="font-bold text-red-600">{deleteOrder.orderId}</span>?</p>
+      {cancelModalVisible && cancelOrder && (
+        <div className={`fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-40 transition-opacity duration-300 ${showCancelModal ? "opacity-100" : "opacity-0"}`}>
+          <div className={`bg-white p-8 rounded-2xl shadow-xl w-[420px] text-center transform transition-transform duration-300 ${showCancelModal ? "translate-y-0 opacity-100" : "-translate-y-10 opacity-0"}`}>
+            <h3 className="text-xl font-semibold mb-4 text-gray-800">Cancel Order?</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to cancel <span className="font-bold text-red-600">{cancelOrder.orderId}</span>?
+              <br />
+              <span className="text-xs text-gray-400">The order will be kept on record with a "Cancelled" status.</span>
+            </p>
             <div className="flex justify-center gap-4">
-              <button onClick={() => { setShowDeleteModal(false); setDeleteModalVisible(false); }} className="px-4 py-2 rounded-full bg-gray-200 hover:bg-gray-300">Cancel</button>
-              <button onClick={handleDelete} className="px-4 py-2 rounded-full bg-red-600 hover:bg-red-700 text-white">Delete</button>
+              <button onClick={closeCancelModal} className="px-4 py-2 rounded-full bg-gray-200 hover:bg-gray-300">Keep Order</button>
+              <button onClick={handleCancelOrder} className="px-4 py-2 rounded-full bg-red-600 hover:bg-red-700 text-white">Cancel Order</button>
             </div>
           </div>
         </div>

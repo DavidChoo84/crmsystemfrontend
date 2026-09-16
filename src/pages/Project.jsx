@@ -19,6 +19,12 @@ const Project = () => {
   const [modalMode, setModalMode] = useState(null); 
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // 🔒 Only master admins can create/edit/delete projects, or open Member
+  // Assignment — everyone else (e.g. cs_pc) can still view the project and
+  // its other modules, read-only.
+  const currentUser = JSON.parse(localStorage.getItem("user") || "null");
+  const isAdmin = currentUser?.role === "master";
+
   useEffect(() => {
     if (projectName) {
       fetchProjectDetails();
@@ -77,6 +83,7 @@ const Project = () => {
 
   // --- API MUTATION HANDLERS (WITH HEADERS) ---
   const handleSaveNewProject = async (formData) => {
+    if (!isAdmin) return; // 🔒 defensive guard, in case this is ever called programmatically
     try {
       const token = localStorage.getItem("token"); // 🚀 Get the token
       const res = await fetch("http://localhost:3000/projects", {
@@ -94,6 +101,7 @@ const Project = () => {
   };
 
   const handleUpdateProject = async (formData) => {
+    if (!isAdmin) return; // 🔒 defensive guard
     try {
       const token = localStorage.getItem("token"); // 🚀 Get the token
       const res = await fetch(`http://localhost:3000/projects/${projectData.projectId}`, {
@@ -119,6 +127,7 @@ const Project = () => {
   };
 
   const handleDeleteProject = async () => {
+    if (!isAdmin) return; // 🔒 defensive guard
     setIsDeleting(true);
     try {
       const token = localStorage.getItem("token"); // 🚀 Get the token
@@ -139,13 +148,16 @@ const Project = () => {
     }
   };
 
-  const modules = [
-    { title: "Product List", path: "product-list", icon: faBox, color: "text-blue-500", bg: "bg-blue-50", desc: "Manage inventory" },
-    { title: "Package List", path: "package-list", icon: faLayerGroup, color: "text-indigo-500", bg: "bg-indigo-50", desc: "Bundle products" },
-    { title: "Member Assignment", path: "members", icon: faUserGear, color: "text-purple-500", bg: "bg-purple-50", desc: "Staff & Teams" },
-    { title: "Project Target", path: "target", icon: faBullseye, color: "text-rose-500", bg: "bg-rose-50", desc: "KPI tracking" },
-    { title: "Reports", path: "reports", icon: faChartLine, color: "text-emerald-500", bg: "bg-emerald-50", desc: "Analytics" },
+  const allModules = [
+    { title: "Product List", path: "product-list", icon: faBox, color: "text-blue-500", bg: "bg-blue-50", desc: "Manage inventory", adminOnly: false },
+    { title: "Package List", path: "package-list", icon: faLayerGroup, color: "text-indigo-500", bg: "bg-indigo-50", desc: "Bundle products", adminOnly: false },
+    { title: "Member Assignment", path: "members", icon: faUserGear, color: "text-purple-500", bg: "bg-purple-50", desc: "Staff & Teams", adminOnly: true },
+    { title: "Project Target", path: "target", icon: faBullseye, color: "text-rose-500", bg: "bg-rose-50", desc: "KPI tracking", adminOnly: false },
+    { title: "Reports", path: "reports", icon: faChartLine, color: "text-emerald-500", bg: "bg-emerald-50", desc: "Analytics", adminOnly: false },
   ];
+
+  // 🔒 Member Assignment tile only shows for master admins
+  const modules = allModules.filter((m) => !m.adminOnly || isAdmin);
 
   if (loading) return <div className="p-10 text-gray-400 animate-pulse font-medium text-center">Loading...</div>;
 
@@ -160,18 +172,23 @@ const Project = () => {
           <div className="space-y-3">
             <h2 className="text-3xl font-black text-gray-900">Welcome to CRM</h2>
             <p className="text-gray-400 text-sm leading-relaxed px-10">
-              You don't have any projects yet. Create your first project workspace to start.
+              {isAdmin 
+                ? "You don't have any projects yet. Create your first project workspace to start."
+                : "No projects have been created yet. Please contact an admin to set one up."}
             </p>
           </div>
-          <button 
-            onClick={() => setModalMode('create')}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-2xl font-bold flex items-center justify-center gap-3 mx-auto transition-all active:scale-95 shadow-lg shadow-indigo-100"
-          >
-            <FontAwesomeIcon icon={faPlus} />
-            Create First Project
-          </button>
+
+          {isAdmin && (
+            <button 
+              onClick={() => setModalMode('create')}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-2xl font-bold flex items-center justify-center gap-3 mx-auto transition-all active:scale-95 shadow-lg shadow-indigo-100"
+            >
+              <FontAwesomeIcon icon={faPlus} />
+              Create First Project
+            </button>
+          )}
           
-          {(modalMode === 'create') && (
+          {isAdmin && (modalMode === 'create') && (
             <ProjectEditModal 
               project={{ isNew: true, projectName: "" }} 
               onClose={() => setModalMode(null)} 
@@ -199,14 +216,17 @@ const Project = () => {
               <h2 className="text-3xl font-black text-gray-900 capitalize">{projectName}</h2>
               <span className="bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full">Active</span>
               
-              <div className="flex gap-2 ml-2">
-                <button onClick={() => setModalMode('edit')} className="w-8 h-8 rounded-full bg-white border border-gray-200 text-gray-400 hover:text-indigo-600 hover:border-indigo-200 transition-all flex items-center justify-center text-xs">
-                  <FontAwesomeIcon icon={faPen} />
-                </button>
-                <button onClick={() => setModalMode('delete')} className="w-8 h-8 rounded-full bg-white border border-gray-200 text-gray-400 hover:text-red-600 hover:border-red-200 transition-all flex items-center justify-center text-xs">
-                  <FontAwesomeIcon icon={faTrash} />
-                </button>
-              </div>
+              {/* 🔒 Edit/Delete only shown to master admins */}
+              {isAdmin && (
+                <div className="flex gap-2 ml-2">
+                  <button onClick={() => setModalMode('edit')} className="w-8 h-8 rounded-full bg-white border border-gray-200 text-gray-400 hover:text-indigo-600 hover:border-indigo-200 transition-all flex items-center justify-center text-xs">
+                    <FontAwesomeIcon icon={faPen} />
+                  </button>
+                  <button onClick={() => setModalMode('delete')} className="w-8 h-8 rounded-full bg-white border border-gray-200 text-gray-400 hover:text-red-600 hover:border-red-200 transition-all flex items-center justify-center text-xs">
+                    <FontAwesomeIcon icon={faTrash} />
+                  </button>
+                </div>
+              )}
             </div>
             
             <div className="flex items-center gap-2 text-gray-400 text-sm mt-1 font-mono">
@@ -216,13 +236,16 @@ const Project = () => {
           </div>
         </div>
 
-        <button 
-          onClick={() => setModalMode('create')}
-          className="bg-white text-gray-700 border border-gray-200 px-6 py-3 rounded-2xl text-sm font-bold hover:bg-gray-50 transition-all shadow-sm flex items-center gap-2 active:scale-95"
-        >
-          <FontAwesomeIcon icon={faPlus} className="text-indigo-600" />
-          Add Project
-        </button>
+        {/* 🔒 Add Project only shown to master admins */}
+        {isAdmin && (
+          <button 
+            onClick={() => setModalMode('create')}
+            className="bg-white text-gray-700 border border-gray-200 px-6 py-3 rounded-2xl text-sm font-bold hover:bg-gray-50 transition-all shadow-sm flex items-center gap-2 active:scale-95"
+          >
+            <FontAwesomeIcon icon={faPlus} className="text-indigo-600" />
+            Add Project
+          </button>
+        )}
       </div>
 
       {/* MODULE GRID */}
@@ -246,8 +269,8 @@ const Project = () => {
         ))}
       </div>
 
-      {/* MODALS */}
-      {(modalMode === 'create' || modalMode === 'edit') && (
+      {/* MODALS — only reachable by master admins since the triggering buttons are hidden above */}
+      {isAdmin && (modalMode === 'create' || modalMode === 'edit') && (
         <ProjectEditModal 
           project={modalMode === 'create' ? { isNew: true, projectName: "" } : { ...projectData, isNew: false }} 
           onClose={() => setModalMode(null)} 
@@ -255,7 +278,7 @@ const Project = () => {
         />
       )}
 
-      {modalMode === 'delete' && (
+      {isAdmin && modalMode === 'delete' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg flex flex-col overflow-hidden transform transition-all">
             <div className="flex justify-between items-center bg-gradient-to-r from-red-600 to-rose-600 px-8 py-6">

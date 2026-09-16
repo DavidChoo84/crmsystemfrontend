@@ -2,11 +2,32 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
+// 🔧 Each subpage now carries its own URL path explicitly, rather than
+// deriving it from the label text. This fixes two issues:
+// 1. "Assignation" previously navigated to /assignation, but the actual
+//    registered route is /members — they never matched.
+// 2. Highlighting the active tab previously reconstructed a label from the
+//    URL segment and string-compared it back to the page name, which broke
+//    whenever the label and the URL slug didn't derive from each other
+//    cleanly (exactly this "Assignation" vs "members" case).
+const SUBPAGE_CONFIG = [
+  { label: "Product List", path: "product-list", adminOnly: false },
+  { label: "Package List", path: "package-list", adminOnly: false },
+  { label: "Assignation", path: "members", adminOnly: true },
+  { label: "Target", path: "target", adminOnly: false },
+  { label: "Reports", path: "reports", adminOnly: false },
+];
+
 const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [projects, setProjects] = useState([]);
   const [expandedProject, setExpandedProject] = useState(null);
+
+  // 🔒 "Assignation" only shows for master admins
+  const currentUser = JSON.parse(localStorage.getItem("user") || "null");
+  const isAdmin = currentUser?.role === "master";
+  const subPages = SUBPAGE_CONFIG.filter((p) => !p.adminOnly || isAdmin);
 
   useEffect(() => {
     // 1. Grab the token you saved during login
@@ -43,14 +64,11 @@ const Sidebar = () => {
 
   const pathParts = location.pathname.split("/").filter(Boolean);
   const currentProject = decodeURIComponent(pathParts[1] || "");
-  const activePage =
-    pathParts[2]?.replace("-", " ").replace(/\b\w/g, (c) => c.toUpperCase()) || "";
+  const activePagePath = pathParts[2] || ""; // raw URL segment, e.g. "members", "product-list"
 
   useEffect(() => {
     if (currentProject) setExpandedProject(currentProject);
   }, [currentProject]);
-
-  const subPages = ["Product List", "Package List", "Assignation", "Target", "Reports"];
 
   const toggleExpand = (projectName) => {
     setExpandedProject((prev) => (prev === projectName ? null : projectName));
@@ -100,14 +118,13 @@ const Sidebar = () => {
                     transition={{ duration: 0.35, ease: "easeInOut" }}
                     className="ml-4 mt-2 space-y-1 overflow-hidden"
                   >
-                    {subPages.map((page) => {
-                      const pagePath = page.toLowerCase().replace(" ", "-");
+                    {subPages.map(({ label, path: pagePath }) => {
                       const isActivePage =
-                        activePage.toLowerCase() === page.toLowerCase();
+                        isActiveProject && activePagePath === pagePath;
 
                       return (
                         <li
-                          key={page}
+                          key={label}
                           onClick={() =>
                             navigate(
                               `/project/${encodeURIComponent(
@@ -141,7 +158,7 @@ const Sidebar = () => {
                             layout
                             transition={{ duration: 0.3 }}
                           >
-                            {page}
+                            {label}
                           </motion.span>
                         </li>
                       );

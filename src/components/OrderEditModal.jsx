@@ -15,6 +15,10 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
   
   // STATE TO CONTROL CUSTOMER MODAL VISIBILITY
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  // 🔧 FIX: holds the pre-fetched ID for a brand-new customer, and whether
+  // that fetch is still in flight (so we can disable the button meanwhile)
+  const [newCustomerId, setNewCustomerId] = useState("");
+  const [fetchingCustomerId, setFetchingCustomerId] = useState(false);
   
   // Track the current order to prevent state resets while typing
   const initializedOrderId = useRef(null);
@@ -157,13 +161,14 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
     if (!template) return;
 
     const newPkg = {
+      packageId: template.packageId, // 🔑 needed to trace this line back to a project for Reports
       packageName: template.packageName,
       packagePrice: Number(template.sellingPrice),
       quantity: 1,
       orderProducts: template.packageProducts?.map(pp => ({
         productId: pp.product?.productId || "",
         productName: pp.product?.productName || "Unknown",
-        unitCost: pp.product?.costPrice || 0,
+        unitCost: pp.product?.costing || 0, // 🔑 FIX: entity field is "costing", not "costPrice"
         quantity: pp.quantity
       })) || []
     };
@@ -182,6 +187,7 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
       orderPackages: [
         ...prev.orderPackages, 
         { 
+          packageId: null, // custom items have no template — won't count toward any project's Reports
           packageName: "", 
           packagePrice: 0, 
           quantity: 1, 
@@ -210,16 +216,53 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
     }
   };
 
-  const handleNewCustomerSaved = (savedCustomer) => {
-    if (savedCustomer) {
+  // 🔧 FIX: pre-fetch a next customer ID before opening the modal, matching
+  // the same pattern CustomerList.jsx already uses for its own "Add" button.
+  // Without this, CustomerEditModal opened with no customerId at all, and
+  // since JSON.stringify drops `undefined` fields, the create request was
+  // silently sent without one.
+  const handleOpenNewCustomer = async () => {
+    setFetchingCustomerId(true);
+    try {
+      const res = await axios.get("http://localhost:3000/customers/next-id");
+      setNewCustomerId(res.data.nextId || res.data || "");
+    } catch (err) {
+      console.error("Error fetching next customer ID", err);
+      setNewCustomerId("");
+    } finally {
+      setFetchingCustomerId(false);
+      setIsCustomerModalOpen(true);
+    }
+  };
+
+  const handleNewCustomerSaved = async (customerPayload) => {
+    if (!customerPayload) {
+      setIsCustomerModalOpen(false);
+      setNewCustomerId("");
+      return;
+    }
+
+    try {
+      // 🔧 FIX: this was previously never actually persisted — it just
+      // treated the raw, unsaved form payload as if it were already
+      // saved. Now it actually POSTs to create the customer, matching
+      // the same endpoint CustomerList.jsx's handleSaveCustomer uses.
+      const res = await axios.post("http://localhost:3000/customers", customerPayload);
+      const saved = res.data;
+
       setFormData(prev => ({
         ...prev,
-        customerId: savedCustomer.customerId,
-        customerName: savedCustomer.name,
-        address: savedCustomer.address || ""
+        customerId: saved.customerId,
+        customerName: saved.name,
+        address: saved.address || ""
       }));
+
+      setIsCustomerModalOpen(false);
+      setNewCustomerId("");
+    } catch (err) {
+      console.error("Failed to create customer:", err);
+      alert(err.response?.data?.message || "Failed to create customer. Please try again.");
     }
-    setIsCustomerModalOpen(false);
   };
 
   const handleSubmit = (e) => {
@@ -251,6 +294,9 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
   const inputStyle = "w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all bg-white";
   const readOnlyStyle = "w-full bg-gray-100 border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-mono text-gray-400 cursor-not-allowed";
   const labelStyle = "block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider";
+
+  // COD, SPayLater, and Cash don't produce a bank/transfer receipt — skip that section for these
+  const skipsReceipt = ["COD", "SPayLater", "Cash"].includes(formData.paymentType);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
@@ -305,12 +351,13 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
                 {!lockOrderFields && (
                   <button 
                     type="button" 
-                    onClick={() => setIsCustomerModalOpen(true)} 
-                    className="px-3.5 bg-indigo-50 border border-indigo-200 text-indigo-700 font-bold rounded-lg hover:bg-indigo-100 active:scale-95 transition flex items-center justify-center gap-1.5 text-sm h-[42px]"
+                    onClick={handleOpenNewCustomer} 
+                    disabled={fetchingCustomerId}
+                    className="px-3.5 bg-indigo-50 border border-indigo-200 text-indigo-700 font-bold rounded-lg hover:bg-indigo-100 active:scale-95 transition flex items-center justify-center gap-1.5 text-sm h-[42px] disabled:opacity-50"
                     title="Add New Customer"
                   >
                     <FontAwesomeIcon icon={faUserPlus} />
-                    <span className="hidden sm:inline">New</span>
+                    <span className="hidden sm:inline">{fetchingCustomerId ? "..." : "New"}</span>
                   </button>
                 )}
               </div>
@@ -326,6 +373,8 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
                 <option value="TNG">Touch 'n Go eWallet</option>
                 <option value="Credit Card">Credit Card</option>
                 <option value="Cash">Cash</option>
+                <option value="COD">Cash on Delivery (COD)</option>
+                <option value="SPayLater">SPayLater</option>
               </select>
             </div>
             <div>
@@ -463,52 +512,60 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
             </div>
           </div>
           
-          {/* Receipt Upload Control Module */}
-          <div className="mt-6 border-t pt-4">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Transaction Receipt / Proof of Payment
-            </label>
-            
-            <div className="flex items-center gap-4">
-              {!lockOrderFields ? (
-                <label className="cursor-pointer bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition">
-                  Choose File
-                  <input 
-                    type="file" 
-                    accept="image/*,application/pdf" 
-                    className="hidden" 
-                    onChange={handleFileChange} 
-                  />
-                </label>
-              ) : (
-                <span className="text-xs text-amber-600 bg-amber-50 px-2.5 py-1 rounded border border-amber-200 font-medium">Locked in Logistic View</span>
-              )}
-              
-              <span className="text-xs text-gray-400">
-                {formData.receiptImage ? "Image processed successfully" : "No file uploaded yet (JPEG, PNG)"}
-              </span>
+          {/* Receipt Upload Control Module — skipped for payment types with no transfer receipt */}
+          {skipsReceipt ? (
+            <div className="mt-6 border-t pt-4">
+              <p className="text-xs text-gray-400 italic">
+                No proof of payment required for {formData.paymentType} orders.
+              </p>
             </div>
-
-            {/* Live Document Render View Container */}
-            {formData.receiptImage && (
-              <div className="mt-4 p-2 bg-gray-100 rounded-lg inline-block relative border">
-                <img 
-                  src={formData.receiptImage} 
-                  alt="Receipt Preview" 
-                  className="max-h-40 rounded object-contain shadow-sm"
-                />
-                {!lockOrderFields && (
-                  <button
-                    type="button"
-                    onClick={() => setFormData((prev) => ({ ...prev, receiptImage: "" }))}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center shadow hover:bg-red-600"
-                  >
-                    ×
-                  </button>
+          ) : (
+            <div className="mt-6 border-t pt-4">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Transaction Receipt / Proof of Payment
+              </label>
+              
+              <div className="flex items-center gap-4">
+                {!lockOrderFields ? (
+                  <label className="cursor-pointer bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition">
+                    Choose File
+                    <input 
+                      type="file" 
+                      accept="image/*,application/pdf" 
+                      className="hidden" 
+                      onChange={handleFileChange} 
+                    />
+                  </label>
+                ) : (
+                  <span className="text-xs text-amber-600 bg-amber-50 px-2.5 py-1 rounded border border-amber-200 font-medium">Locked in Logistic View</span>
                 )}
+                
+                <span className="text-xs text-gray-400">
+                  {formData.receiptImage ? "Image processed successfully" : "No file uploaded yet (JPEG, PNG)"}
+                </span>
               </div>
-            )}
-          </div>
+
+              {/* Live Document Render View Container */}
+              {formData.receiptImage && (
+                <div className="mt-4 p-2 bg-gray-100 rounded-lg inline-block relative border">
+                  <img 
+                    src={formData.receiptImage} 
+                    alt="Receipt Preview" 
+                    className="max-h-40 rounded object-contain shadow-sm"
+                  />
+                  {!lockOrderFields && (
+                    <button
+                      type="button"
+                      onClick={() => setFormData((prev) => ({ ...prev, receiptImage: "" }))}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center shadow hover:bg-red-600"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Footer */}
           <div className="flex justify-end gap-3 pt-6">
@@ -526,8 +583,8 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
       {/* CONDITIONALLY RENDER THE CUSTOMER EDIT MODAL OVERLAY */}
       {isCustomerModalOpen && (
         <CustomerEditModal 
-          customer={{ isNew: true }} 
-          onClose={() => setIsCustomerModalOpen(false)} 
+          customer={{ isNew: true, customerId: newCustomerId }} 
+          onClose={() => { setIsCustomerModalOpen(false); setNewCustomerId(""); }} 
           onSave={handleNewCustomerSaved} 
         />
       )}

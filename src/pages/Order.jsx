@@ -20,9 +20,12 @@ const Order = ({ viewMode = "orders" }) => {
   
   const [filterExactDate, setFilterExactDate] = useState("");
   const [filterMonth, setFilterMonth] = useState("");
+  const [filterProjectId, setFilterProjectId] = useState("");
+  const [projects, setProjects] = useState([]);
   const [notification, setNotification] = useState({ message: "", type: "" });
 
-  useEffect(() => { fetchOrders(); }, []);
+  useEffect(() => { fetchProjects(); }, []);
+  useEffect(() => { fetchOrders(); }, [filterProjectId]);
 
   const showNotification = (message, type = "success") => {
     setNotification({ message, type });
@@ -33,7 +36,10 @@ const Order = ({ viewMode = "orders" }) => {
   const fetchOrders = async () => {
     try {
       const token = localStorage.getItem("token"); // 🚀 Get token
-      const res = await fetch("http://localhost:3000/orders", {
+      const url = filterProjectId
+        ? `http://localhost:3000/orders?projectId=${filterProjectId}`
+        : "http://localhost:3000/orders";
+      const res = await fetch(url, {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${token}`
@@ -43,6 +49,19 @@ const Order = ({ viewMode = "orders" }) => {
       setOrders(data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
     } catch (error) {
       showNotification("Failed to fetch orders", "error");
+    }
+  };
+
+  // Fetch Projects (for the project filter dropdown)
+  const fetchProjects = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("http://localhost:3000/projects", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.ok) setProjects(await res.json());
+    } catch (error) {
+      console.error("Failed to fetch projects", error);
     }
   };
 
@@ -109,7 +128,7 @@ const Order = ({ viewMode = "orders" }) => {
     try {
       const token = localStorage.getItem("token"); // 🚀 Get token
       const isUpdate = !orderData.isNew;
-      let finalReceiptUrl = orderData.receiptUrl || "";
+      let finalReceiptUrl = orderData.receiptImage || ""; // 🔑 FIX: was "receiptUrl", which doesn't exist — this was silently wiping the existing receipt on every edit that didn't re-upload a file
 
       // 1. Upload receipt if file exists (Secured)
       if (rawFile) {
@@ -137,7 +156,7 @@ const Order = ({ viewMode = "orders" }) => {
       
       const payload = { 
         ...orderData, 
-        receiptUrl: finalReceiptUrl, 
+        receiptImage: finalReceiptUrl, 
         shippingFee: Number(orderData.shippingFee || 0), 
         totalAmount: Number(orderData.totalAmount || 0), 
         orderDate: orderData.orderDate ? new Date(orderData.orderDate).toISOString() : new Date().toISOString() 
@@ -231,6 +250,8 @@ const Order = ({ viewMode = "orders" }) => {
         <OrderFilters 
           filterMonth={filterMonth} setFilterMonth={setFilterMonth} 
           filterExactDate={filterExactDate} setFilterExactDate={setFilterExactDate} 
+          filterProjectId={filterProjectId} setFilterProjectId={setFilterProjectId}
+          projects={projects}
         />
 
         {/* ✅ Passed onMarkAsSent, onMarkAsFailed, and onCancel to the table layout */}

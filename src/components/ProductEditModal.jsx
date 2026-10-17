@@ -10,7 +10,10 @@ const ProductEditModal = ({ product, onClose, onSave }) => {
     unit: "",
     quantityPerBox: "",
     projectId: "",
+    parentProductId: "",
   });
+
+  const [availableParents, setAvailableParents] = useState([]);
 
   // ✅ Allow modal to open even when product = null (Add mode)
   useEffect(() => {
@@ -23,9 +26,33 @@ const ProductEditModal = ({ product, onClose, onSave }) => {
         unit: product.unit || "",
         quantityPerBox: product.quantityPerBox || "",
         projectId: product.projectId || product.project?.projectId || "",
+        parentProductId: product.parentProductId || "",
       });
     }
   }, [product]);
+
+  // Fetch candidate parent products — same project, excluding this product itself
+  // (a product can't be its own parent) and excluding any product that is
+  // already a sub-product itself (keeps the hierarchy to one level).
+  useEffect(() => {
+    if (!formData.projectId) return;
+
+    const token = localStorage.getItem("token");
+    fetch("http://localhost:3000/products", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        const candidates = (Array.isArray(data) ? data : []).filter(
+          (p) =>
+            p.projectId === formData.projectId &&
+            p.productId !== formData.productId &&
+            !p.parentProductId
+        );
+        setAvailableParents(candidates);
+      })
+      .catch((err) => console.error("Failed to fetch parent product options", err));
+  }, [formData.projectId, formData.productId]);
 
   // ❌ REMOVE this check — it caused modal not to show during Add
   // if (!product) return null;
@@ -35,9 +62,35 @@ const ProductEditModal = ({ product, onClose, onSave }) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Selecting a parent resets this product's Quantity to 0, since a
+  // sub-product's stock is meant to be governed by the parent (auto-
+  // replenished), not tracked as a real starting count. The conversion
+  // ratio itself is never stored here — it's read from the parent's own
+  // Qty/Box directly at order time, so it can never drift out of sync.
+  const handleParentChange = (e) => {
+    const selectedParentId = e.target.value;
+
+    setFormData((prev) => ({
+      ...prev,
+      parentProductId: selectedParentId,
+      quantity: selectedParentId ? 0 : prev.quantity,
+    }));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave({ ...formData, isNew: product?.isNew });
+    const isSubProduct = !!formData.parentProductId;
+    onSave({
+      ...formData,
+      // Send null rather than "" when no parent is selected
+      parentProductId: formData.parentProductId || null,
+      // 🔑 FIX: Qty/Box is locked (uneditable) for sub-products, so it stays
+      // as an empty string on a brand-new product — MySQL rejects '' for
+      // an int column. Skip the check entirely and just send 0.
+      quantityPerBox: isSubProduct ? 0 : formData.quantityPerBox,
+      quantity: isSubProduct ? 0 : formData.quantity,
+      isNew: product?.isNew,
+    });
   };
 
   return (
@@ -93,29 +146,61 @@ const ProductEditModal = ({ product, onClose, onSave }) => {
               />
             </div>
 
-            {/* Editable fields */}
+            {/* Editable fields — Quantity, Unit, and Qty/Box lock once a
+                parent is chosen, since a sub-product's stock is governed
+                by the parent (auto-replenished), not tracked independently. */}
             {[
               ["Product Name", "productName"],
               ["Costing", "costing"],
               ["Quantity", "quantity"],
               ["Unit", "unit"],
               ["Qty / Box", "quantityPerBox"],
-            ].map(([label, name]) => (
-              <div key={name} className="flex flex-col col-span-1">
-                <label className="text-sm text-gray-500 mb-1">{label}</label>
-                <input
-                  type={
-                    ["costing", "quantity", "quantityPerBox"].includes(name)
-                      ? "number"
-                      : "text"
-                  }
-                  name={name}
-                  value={formData[name]}
-                  onChange={handleChange}
-                  className="px-3 py-2 rounded-full text-center font-medium border bg-blue-50 text-blue-700 border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
-              </div>
-            ))}
+            ].map(([label, name]) => {
+              const isLockable = ["quantity", "quantityPerBox"].includes(name);
+              const isLocked = isLockable && !!formData.parentProductId;
+
+              return (
+                <div key={name} className="flex flex-col col-span-1">
+                  <label className="text-sm text-gray-500 mb-1">{label}</label>
+                  <input
+                    type={
+                      ["costing", "quantity", "quantityPerBox"].includes(name)
+                        ? "number"
+                        : "text"
+                    }
+                    name={name}
+                    value={formData[name]}
+                    onChange={handleChange}
+                    disabled={isLocked}
+                    className={`px-3 py-2 rounded-full text-center font-medium border focus:outline-none focus:ring-2 transition ${
+                      isLocked
+                        ? "bg-gray-100 text-gray-500 border-gray-200 cursor-not-allowed"
+                        : "bg-blue-50 text-blue-700 border-blue-200 focus:ring-blue-400"
+                    }`}
+                  />
+                </div>
+              );
+            })}
+
+            {/* Parent Product — makes this a sub-product (e.g. "Vitamin A (Plate)") */}
+            <div className="flex flex-col col-span-2">
+              <label className="text-sm text-gray-500 mb-1">
+                Parent Product <span className="text-gray-400">(optional — makes this a sub-product)</span>
+              </label>
+              <select
+                name="parentProductId"
+                value={formData.parentProductId}
+                onChange={handleParentChange}
+                className="px-3 py-2 rounded-full text-center font-medium border bg-purple-50 text-purple-700 border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-400"
+              >
+                <option value="">None (standalone product)</option>
+                {availableParents.map((p) => (
+                  <option key={p.productId} value={p.productId}>
+                    {p.productName} ({p.productId})
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="mt-8 flex justify-center gap-4">

@@ -1,12 +1,25 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBullseye, faArrowLeft, faFloppyDisk, faClockRotateLeft } from "@fortawesome/free-solid-svg-icons";
+import { faBullseye, faArrowLeft, faFloppyDisk, faClockRotateLeft, faCalendarDays } from "@fortawesome/free-solid-svg-icons";
 
 const monthNames = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"
 ];
+
+const fmtRM = (n) => `RM ${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+// One blank row per day of the given "YYYY-MM" month.
+const blankDays = (yearMonth) => {
+  const [year, month] = yearMonth.split("-").map(Number);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  return Array.from({ length: daysInMonth }, (_, i) => ({
+    date: `${yearMonth}-${String(i + 1).padStart(2, "0")}`,
+    leads: "",
+    adSpend: "",
+  }));
+};
 
 const ProjectTarget = () => {
   const { projectName } = useParams();
@@ -24,8 +37,9 @@ const ProjectTarget = () => {
 
   const [targetOfMonth, setTargetOfMonth] = useState("");
   const [estimateSales, setEstimateSales] = useState("");
-  const [adSpend, setAdSpend] = useState("");
   const [history, setHistory] = useState([]);
+  const [dailyRows, setDailyRows] = useState(() => blankDays(selectedMonth));
+  const [savingDaily, setSavingDaily] = useState(false);
 
   const getToken = () => localStorage.getItem("token");
 
@@ -42,6 +56,7 @@ const ProjectTarget = () => {
     if (projectId) {
       fetchHistory();
       fetchSelectedMonth();
+      fetchDaily();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, selectedMonth]);
@@ -87,19 +102,84 @@ const ProjectTarget = () => {
         if (data) {
           setTargetOfMonth(data.targetOfMonth ?? "");
           setEstimateSales(data.estimateSales ?? "");
-          setAdSpend(data.adSpend ?? "");
           return;
         }
       }
       setTargetOfMonth("");
       setEstimateSales("");
-      setAdSpend("");
     } catch (err) {
       console.error("Failed to fetch month target", err);
       setTargetOfMonth("");
       setEstimateSales("");
     }
   };
+
+  const fetchDaily = async () => {
+    const [year, month] = selectedMonth.split("-").map(Number);
+    const rows = blankDays(selectedMonth);
+    try {
+      const token = getToken();
+      const res = await fetch(`http://localhost:3000/project-targets/${projectId}/${year}/${month}/daily`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        const byDate = new Map(saved.map((d) => [String(d.date).slice(0, 10), d]));
+        rows.forEach((row) => {
+          const entry = byDate.get(row.date);
+          if (entry) {
+            row.leads = entry.leads ?? "";
+            row.adSpend = entry.adSpend ?? "";
+          }
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch daily data", err);
+    }
+    setDailyRows(rows);
+  };
+
+  const updateDailyRow = (date, field, value) => {
+    setDailyRows((rows) => rows.map((r) => (r.date === date ? { ...r, [field]: value } : r)));
+  };
+
+  const handleSaveDaily = async () => {
+    setSavingDaily(true);
+    try {
+      const token = getToken();
+      const res = await fetch("http://localhost:3000/project-targets/daily", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          projectId,
+          days: dailyRows.map((r) => ({
+            date: r.date,
+            leads: Math.max(0, Math.round(Number(r.leads) || 0)),
+            adSpend: Math.max(0, Number(r.adSpend) || 0),
+          })),
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to save daily data");
+
+      showNotification("Daily data saved successfully!");
+      fetchDaily();
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message || "Failed to save daily data", "error");
+    } finally {
+      setSavingDaily(false);
+    }
+  };
+
+  const dailyTotals = dailyRows.reduce(
+    (t, r) => ({ leads: t.leads + (Number(r.leads) || 0), adSpend: t.adSpend + (Number(r.adSpend) || 0) }),
+    { leads: 0, adSpend: 0 }
+  );
+  const cprOf = (adSpend, leads) => (Number(leads) > 0 ? fmtRM(Number(adSpend || 0) / Number(leads)) : "—");
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -119,7 +199,6 @@ const ProjectTarget = () => {
           month,
           targetOfMonth: Number(targetOfMonth) || 0,
           estimateSales: Number(estimateSales) || 0,
-          adSpend: Number(adSpend) || 0,
         }),
       });
 
@@ -207,21 +286,6 @@ const ProjectTarget = () => {
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
-                Ad Spend (RM)
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={adSpend}
-                onChange={(e) => setAdSpend(e.target.value)}
-                placeholder="0.00"
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-              />
-            </div>
-
             <button
               type="submit"
               disabled={saving || !projectId}
@@ -249,7 +313,6 @@ const ProjectTarget = () => {
                     <th className="py-2 pr-4">Month</th>
                     <th className="py-2 pr-4">Target (RM)</th>
                     <th className="py-2 pr-4">Estimate Sales (RM)</th>
-                    <th className="py-2 pr-4">Ad Spend (RM)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -264,15 +327,84 @@ const ProjectTarget = () => {
                       <td className="py-3 pr-4 text-gray-600">
                         RM {Number(h.estimateSales).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </td>
-                      <td className="py-3 pr-4 text-gray-600">
-                        RM {Number(h.adSpend || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           )}
+        </div>
+
+        {/* DAILY LEADS + AD SPEND CARD */}
+        <div className="lg:col-span-3 bg-white p-8 rounded-[2rem] shadow-sm border border-gray-100">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <h3 className="text-sm font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+              <FontAwesomeIcon icon={faCalendarDays} /> Daily Leads &amp; Ad Spend —{" "}
+              {monthNames[Number(selectedMonth.split("-")[1]) - 1]} {selectedMonth.split("-")[0]}
+            </h3>
+            <button
+              type="button"
+              onClick={handleSaveDaily}
+              disabled={savingDaily || !projectId}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+            >
+              <FontAwesomeIcon icon={faFloppyDisk} />
+              {savingDaily ? "Saving..." : "Save Daily Data"}
+            </button>
+          </div>
+
+          <div className="overflow-x-auto max-h-[480px] overflow-y-auto">
+            <table className="w-full text-left border-collapse text-sm">
+              <thead className="text-gray-400 uppercase text-xs sticky top-0 bg-white">
+                <tr>
+                  <th className="py-2 pr-4">Date</th>
+                  <th className="py-2 pr-4">Leads</th>
+                  <th className="py-2 pr-4">Ad Spend (RM)</th>
+                  <th className="py-2 pr-4">CPR</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dailyRows.map((r) => (
+                  <tr key={r.date} className="border-t border-gray-100">
+                    <td className="py-2 pr-4 font-medium text-gray-700 whitespace-nowrap">
+                      {new Date(`${r.date}T00:00:00`).toLocaleDateString(undefined, { day: "2-digit", month: "short", weekday: "short" })}
+                    </td>
+                    <td className="py-2 pr-4">
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={r.leads}
+                        onChange={(e) => updateDailyRow(r.date, "leads", e.target.value)}
+                        placeholder="0"
+                        className="w-28 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                      />
+                    </td>
+                    <td className="py-2 pr-4">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={r.adSpend}
+                        onChange={(e) => updateDailyRow(r.date, "adSpend", e.target.value)}
+                        placeholder="0.00"
+                        className="w-36 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                      />
+                    </td>
+                    <td className="py-2 pr-4 text-gray-600 whitespace-nowrap">{cprOf(r.adSpend, r.leads)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="sticky bottom-0 bg-gray-50 font-bold text-gray-800">
+                <tr className="border-t-2 border-gray-200">
+                  <td className="py-3 pr-4">Month Total</td>
+                  <td className="py-3 pr-4">{dailyTotals.leads.toLocaleString()}</td>
+                  <td className="py-3 pr-4">{fmtRM(dailyTotals.adSpend)}</td>
+                  <td className="py-3 pr-4">{cprOf(dailyTotals.adSpend, dailyTotals.leads)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </div>
       </div>
     </div>

@@ -23,24 +23,38 @@ const PackageEditModal = ({ pkg, projectId, onClose, onSave }) => {
   });
 
   // --- 1. Centralized Calculation Logic ---
+  // 🔧 CHANGED: "Average Price / Qty" now means average COST per unit of
+  // the main product ONLY — free gifts and add-ons are excluded from both
+  // the cost sum and the quantity count. "Main product" is index 0, which
+  // the UI already locks as the only item that can never be a free gift;
+  // everything else is either a free gift (isFreeItem: true) or an add-on
+  // (isFreeItem: false, index > 0) — that classification already existed
+  // visually, this just makes the average calculation respect it.
+  // Total Cost still sums every item (main + free + add-on + shipping) —
+  // only the average-per-unit figure changed scope.
   const recalculateStats = useCallback((currentData, currentProducts) => {
     let productCostSum = 0;
-    let totalQuantity = 0;
+    let mainProductCostSum = 0;
+    let mainProductQuantity = 0;
 
-    currentData.packageProducts.forEach(item => {
+    currentData.packageProducts.forEach((item, idx) => {
       const prod = currentProducts.find(p => p.productId === item.productId);
       const qty = parseFloat(item.quantity) || 0;
-      
-      if (prod) {
-        productCostSum += (parseFloat(prod.costing || 0) * qty);
+      const cost = prod ? (parseFloat(prod.costing || 0) * qty) : 0;
+
+      productCostSum += cost;
+
+      const isMainProduct = idx === 0 && !item.isFreeItem;
+      if (isMainProduct) {
+        mainProductCostSum += cost;
+        mainProductQuantity += qty;
       }
-      totalQuantity += qty;
     });
 
     const selling = parseFloat(currentData.sellingPrice) || 0;
     const shipping = parseFloat(currentData.shippingCost) || 0;
     const totalCost = productCostSum + shipping;
-    const average = totalQuantity > 0 ? (selling / totalQuantity) : 0;
+    const average = mainProductQuantity > 0 ? (mainProductCostSum / mainProductQuantity) : 0;
     const costMargin = selling > 0 ? ((totalCost / selling) * 100) : 0;
 
     return {
@@ -142,7 +156,15 @@ const PackageEditModal = ({ pkg, projectId, onClose, onSave }) => {
       costMargin: parseFloat(formData.costMargin) || 0,
       average: parseFloat(formData.average) || 0,
       // The filter naturally keeps packageProductId along with the other fields!
-      packageProducts: formData.packageProducts.filter(item => item.productId !== "") 
+      // 🔧 NEW: isAddOn is derived here (index > 0 and not a free gift) and
+      // persisted explicitly — it was previously only an implied UI label,
+      // never actually saved to the database.
+      packageProducts: formData.packageProducts
+        .filter(item => item.productId !== "")
+        .map((item, idx) => ({
+          ...item,
+          isAddOn: idx > 0 && !item.isFreeItem,
+        }))
     };
     onSave(payload);
   };
@@ -228,8 +250,9 @@ const PackageEditModal = ({ pkg, projectId, onClose, onSave }) => {
                  <p className="text-[10px] text-gray-400">(Total Cost / Selling)</p>
               </div>
               <div className="col-span-2 border-t pt-2 mt-1">
-                <label className="text-xs font-bold text-gray-500 block">Average Price / Qty</label>
+                <label className="text-xs font-bold text-gray-500 block">Average Cost / Qty (Main Product Only)</label>
                 <span className="text-md font-medium text-gray-700">RM {formData.average} / unit</span>
+                <p className="text-[10px] text-gray-400">(Excludes free gifts &amp; add-ons)</p>
               </div>
             </div>
           </div>

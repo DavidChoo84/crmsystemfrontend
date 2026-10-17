@@ -1,10 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEye, faPenToSquare, faTrash, faPlus, faFilter, faUndo } from "@fortawesome/free-solid-svg-icons";
+import { faEye, faPenToSquare, faTrash, faPlus, faFilter, faUndo, faFileExcel } from "@fortawesome/free-solid-svg-icons";
 
 // Assuming you have created these similar to your Product modals
 import CustomerDetailModal from "../components/CustomerDetailModal";
 import CustomerEditModal from "../components/CustomerEditModal";
+
+const fmtRM = (n) => `RM ${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+// AOV = lifetime spending (LPV) / total orders
+const aovOf = (c) => (Number(c.totalOrder) > 0 ? Number(c.totalSpent || 0) / Number(c.totalOrder) : 0);
 
 const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
@@ -22,6 +27,13 @@ const CustomerList = () => {
   // 🚨 NEW FILTER STATES
   const [filterExactDate, setFilterExactDate] = useState(""); // Format: YYYY-MM-DD
   const [filterMonth, setFilterMonth] = useState(""); // Format: "01" through "12"
+
+  // Excel export: "YYYY-MM", or "" for all customers
+  const [exportMonth, setExportMonth] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
+  const [exporting, setExporting] = useState(false);
 
   // Notification
   const [notification, setNotification] = useState({ message: "", type: "" });
@@ -189,6 +201,88 @@ const CustomerList = () => {
     return true;
   });
 
+  // 7. Export to Excel — customers who ordered in the chosen month (with that
+  // month's orders + spending), or every customer when no month is chosen.
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const [year, month] = exportMonth ? exportMonth.split("-").map(Number) : [];
+      const query = exportMonth ? `?year=${year}&month=${month}` : "";
+      const res = await fetch(`http://localhost:3000/customers/export${query}`);
+      if (!res.ok) throw new Error("Failed to load export data");
+      const rows = await res.json();
+
+      if (rows.length === 0) {
+        showNotification(exportMonth ? "No customers ordered in this month" : "No customers to export", "error");
+        return;
+      }
+
+      // Loaded on demand so the Excel library isn't in the main bundle
+      const { default: ExcelJS } = await import("exceljs");
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet(exportMonth ? `Customers ${exportMonth}` : "Customers");
+
+      const rmFormat = '"RM "#,##0.00';
+      sheet.columns = [
+        { header: "ID", key: "customerId", width: 10 },
+        { header: "Name", key: "name", width: 28 },
+        { header: "Phone", key: "mobilePhone", width: 16 },
+        { header: "Email", key: "email", width: 28 },
+        { header: "FB Name", key: "fbName", width: 20 },
+        { header: "Date of Birth", key: "dateOfBirth", width: 14 },
+        ...(exportMonth
+          ? [
+              { header: "Orders (Month)", key: "monthOrders", width: 15 },
+              { header: "Spending (Month)", key: "monthSpent", width: 18, style: { numFmt: rmFormat } },
+            ]
+          : []),
+        { header: "Total Order", key: "totalOrder", width: 12 },
+        { header: "LPV (Lifetime Spending)", key: "totalSpent", width: 24, style: { numFmt: rmFormat } },
+        { header: "AOV (Average Spending)", key: "aov", width: 24, style: { numFmt: rmFormat } },
+        { header: "Privilege", key: "privilege", width: 12 },
+        { header: "Last Order Date", key: "lastOrderDate", width: 16 },
+        { header: "Address", key: "address", width: 40 },
+        { header: "Post Code", key: "postCode", width: 10 },
+        { header: "City", key: "city", width: 16 },
+        { header: "State", key: "state", width: 16 },
+      ];
+      sheet.getRow(1).font = { bold: true };
+      sheet.views = [{ state: "frozen", ySplit: 1 }];
+
+      const toDate = (v) => (v ? new Date(v).toLocaleDateString() : "");
+      rows.forEach((c) => {
+        sheet.addRow({
+          ...c,
+          dateOfBirth: toDate(c.dateOfBirth),
+          lastOrderDate: toDate(c.lastOrderDate),
+          totalOrder: Number(c.totalOrder) || 0,
+          totalSpent: Number(c.totalSpent) || 0,
+          aov: aovOf(c),
+          monthOrders: Number(c.monthOrders) || 0,
+          monthSpent: Number(c.monthSpent) || 0,
+        });
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = exportMonth ? `customers-${exportMonth}.xlsx` : "customers-all.xlsx";
+      link.click();
+      URL.revokeObjectURL(url);
+
+      showNotification(`Exported ${rows.length} customer(s)`, "success");
+    } catch (err) {
+      console.error("Error exporting customers:", err);
+      showNotification("Failed to export customers", "error");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   // Reset helper
   const handleClearFilters = () => {
     setFilterExactDate("");
@@ -221,13 +315,32 @@ const CustomerList = () => {
           <h2 className="text-2xl font-semibold text-gray-800">
             Customer Management
           </h2>
-          <button
-            onClick={handleAdd}
-            className="flex items-center gap-2 px-5 py-2 rounded-full bg-blue-600 text-white font-medium hover:bg-blue-700 transition"
-          >
-            <FontAwesomeIcon icon={faPlus} />
-            Add Customer
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-full pl-4 pr-1 py-1">
+              <input
+                type="month"
+                value={exportMonth}
+                onChange={(e) => setExportMonth(e.target.value)}
+                title="Leave empty to export all customers"
+                className="text-sm bg-transparent outline-none"
+              />
+              <button
+                onClick={handleExport}
+                disabled={exporting}
+                className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition disabled:opacity-50"
+              >
+                <FontAwesomeIcon icon={faFileExcel} />
+                {exporting ? "Exporting..." : exportMonth ? "Export Month" : "Export All"}
+              </button>
+            </div>
+            <button
+              onClick={handleAdd}
+              className="flex items-center gap-2 px-5 py-2 rounded-full bg-blue-600 text-white font-medium hover:bg-blue-700 transition"
+            >
+              <FontAwesomeIcon icon={faPlus} />
+              Add Customer
+            </button>
+          </div>
         </div>
 
         {/* 🚨 NEW: FILTERS CONTROL BAR */}
@@ -299,7 +412,8 @@ const CustomerList = () => {
                 <th className="py-3 px-4">Email</th>
                 <th className="py-3 px-4">Date of Birth</th> {/* 🚨 Added Header column */}
                 <th className="py-3 px-4">Total Order</th>
-                <th className="py-3 px-4">Total Spent</th>
+                <th className="py-3 px-4">LPV (Lifetime Spending)</th>
+                <th className="py-3 px-4">AOV (Average Spending)</th>
                 <th className="py-3 px-4">Privilege</th>
                 <th className="py-3 px-4 text-center">Actions</th>
               </tr>
@@ -327,8 +441,9 @@ const CustomerList = () => {
                     </td>
 
                     <td className="py-3 px-4">{c.totalOrder}</td>
+                    <td className="py-3 px-4 font-medium">{fmtRM(c.totalSpent)}</td>
                     <td className="py-3 px-4 font-medium">
-                       RM {Number(c.totalSpent).toLocaleString()}
+                      {Number(c.totalOrder) > 0 ? fmtRM(aovOf(c)) : <span className="text-gray-300">—</span>}
                     </td>
                     <td className="py-3 px-4">
                       <span className={`px-2 py-1 rounded-full text-xs font-bold ${getPrivilegeColor(c.privilege)}`}>
@@ -363,7 +478,7 @@ const CustomerList = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="8" className="text-center py-6 text-gray-500">
+                  <td colSpan="9" className="text-center py-6 text-gray-500">
                     No matching customers found.
                   </td>
                 </tr>

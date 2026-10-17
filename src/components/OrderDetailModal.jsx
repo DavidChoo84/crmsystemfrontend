@@ -10,7 +10,8 @@ import {
   faClipboardList,
   faCircleCheck,
   faReceipt,
-  faEye
+  faEye,
+  faDownload
 } from "@fortawesome/free-solid-svg-icons";
 
 const OrderDetailModal = ({ order, onClose }) => {
@@ -42,6 +43,34 @@ const OrderDetailModal = ({ order, onClose }) => {
   }, [order]);
 
   if (!order) return null;
+
+  // Resolves order.receiptImage into a URL usable as an <img src>. Handles
+  // three cases: an already-full URL, a legacy base64 data URI (from
+  // before the receiptUrl/receiptImage naming bug was fixed), or the
+  // normal case — a relative "uploads/xxx.png" path that needs the
+  // backend origin prefixed to actually resolve (the frontend runs on a
+  // different port, so a bare relative path would 404 against :3001).
+  const getReceiptUrl = (receiptImage) => {
+    if (!receiptImage) return "";
+    if (receiptImage.startsWith("http") || receiptImage.startsWith("data:")) {
+      return receiptImage;
+    }
+    return `http://localhost:3000/${receiptImage}`;
+  };
+
+  // Routes through the backend's dedicated download endpoint, which sets
+  // Content-Disposition: attachment so the browser actually saves the file
+  // instead of just navigating to it — a plain <a href> to a cross-origin
+  // image URL typically just opens it inline instead of downloading.
+  const getReceiptDownloadUrl = (receiptImage) => {
+    if (!receiptImage) return "";
+    // Legacy base64 receipts have no filename on disk to route through the
+    // download endpoint — fall back to the raw data URI, which the browser
+    // can still save via the download attribute.
+    if (receiptImage.startsWith("data:")) return receiptImage;
+    const filename = receiptImage.split("/").pop();
+    return `http://localhost:3000/orders/receipt/${filename}`;
+  };
 
   // Helper for empty fields
   const displayVal = (val) => val || <span className="text-gray-400 italic">N/A</span>;
@@ -289,19 +318,31 @@ const OrderDetailModal = ({ order, onClose }) => {
 
               <div className="flex-1 overflow-auto flex items-center justify-center bg-gray-50 rounded-lg border p-2">
                 <img 
-                  src={order.receiptImage} 
+                  src={getReceiptUrl(order.receiptImage)} 
                   alt="Order Payment Attachment" 
                   className="max-w-full max-h-[60vh] object-contain rounded shadow-sm"
                 />
               </div>
 
-              <button
-                type="button"
-                onClick={() => setIsReceiptOpen(false)}
-                className="mt-4 w-full py-2.5 bg-gray-800 text-white font-bold text-sm rounded-lg hover:bg-gray-900 transition"
-              >
-                Close Preview
-              </button>
+              <div className="flex gap-3 mt-4">
+                <a
+                  href={getReceiptDownloadUrl(order.receiptImage)}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 py-2.5 bg-indigo-600 text-white font-bold text-sm rounded-lg hover:bg-indigo-700 transition flex items-center justify-center gap-2"
+                >
+                  <FontAwesomeIcon icon={faDownload} />
+                  Download
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setIsReceiptOpen(false)}
+                  className="flex-1 py-2.5 bg-gray-800 text-white font-bold text-sm rounded-lg hover:bg-gray-900 transition"
+                >
+                  Close Preview
+                </button>
+              </div>
             </div>
           </div>
         )}

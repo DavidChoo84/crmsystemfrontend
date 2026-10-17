@@ -2,10 +2,16 @@ import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFilter, faUndo } from "@fortawesome/free-solid-svg-icons";
 
-export const OrderFilters = ({ filterMonth, setFilterMonth, filterExactDate, setFilterExactDate }) => {
+export const OrderFilters = ({
+  filterMonth, setFilterMonth,
+  filterExactDate, setFilterExactDate,
+  filterProjectId, setFilterProjectId,
+  projects = [],
+}) => {
   const handleClearFilters = () => {
     setFilterExactDate("");
     setFilterMonth("");
+    setFilterProjectId("");
   };
 
   return (
@@ -14,6 +20,19 @@ export const OrderFilters = ({ filterMonth, setFilterMonth, filterExactDate, set
         <div className="text-sm font-bold text-gray-500 flex items-center gap-1.5 uppercase tracking-wider">
           <FontAwesomeIcon icon={faFilter} className="text-blue-600" /> Filter Orders:
         </div>
+
+        <select
+          value={filterProjectId}
+          onChange={(e) => setFilterProjectId(e.target.value)}
+          className="px-3 py-1.5 rounded-lg border bg-gray-50 text-sm focus:outline-blue-500"
+        >
+          <option value="">All Projects</option>
+          {projects.map((p) => (
+            <option key={p.projectId} value={p.projectId}>
+              {p.projectName}
+            </option>
+          ))}
+        </select>
 
         <select
           value={filterMonth}
@@ -52,7 +71,7 @@ export const OrderFilters = ({ filterMonth, setFilterMonth, filterExactDate, set
         </div>
       </div>
 
-      {(filterExactDate || filterMonth) && (
+      {(filterExactDate || filterMonth || filterProjectId) && (
         <button
           onClick={handleClearFilters}
           className="px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-xs font-semibold text-gray-600 transition flex items-center gap-1.5"

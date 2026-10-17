@@ -35,7 +35,7 @@ const Reports = () => {
   );
 
   const [summary, setSummary] = useState({
-    totalSales: 0, currentSales: 0, expenses: 0, salesTarget: 0, adSpend: 0, returnOnExpenses: 0,
+    totalSales: 0, currentSales: 0, estimateSales: 0, expenses: 0, salesTarget: 0, adSpend: 0, returnOnExpenses: 0,
   });
   const [dailyData, setDailyData] = useState([]);
   const [weeklyData, setWeeklyData] = useState([]);
@@ -86,14 +86,15 @@ const Reports = () => {
   };
 
   const fetchCharts = async () => {
+    const [year, month] = selectedMonth.split("-").map(Number);
     try {
       const token = getToken();
       const headers = { Authorization: `Bearer ${token}` };
 
       const [dailyRes, weeklyRes, monthlyRes] = await Promise.all([
-        fetch(`http://localhost:3000/reports/${projectId}/daily?days=30`, { headers }),
-        fetch(`http://localhost:3000/reports/${projectId}/weekly?weeks=12`, { headers }),
-        fetch(`http://localhost:3000/reports/${projectId}/monthly?months=12`, { headers }),
+        fetch(`http://localhost:3000/reports/${projectId}/daily?year=${year}&month=${month}`, { headers }),
+        fetch(`http://localhost:3000/reports/${projectId}/weekly?year=${year}&month=${month}`, { headers }),
+        fetch(`http://localhost:3000/reports/${projectId}/monthly?months=12&year=${year}&month=${month}`, { headers }),
       ]);
 
       if (dailyRes.ok) setDailyData(await dailyRes.json());
@@ -134,9 +135,10 @@ const Reports = () => {
       </div>
 
       {/* KPI CARDS */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
         <KpiCard icon={faSackDollar} label="Total Sales" value={fmtRM(summary.totalSales)} color="text-emerald-600" bg="bg-emerald-50" />
         <KpiCard icon={faBolt} label="Current Sales" value={fmtRM(summary.currentSales)} color="text-blue-600" bg="bg-blue-50" />
+        <KpiCard icon={faChartLine} label="Estimate Sales" value={fmtRM(summary.estimateSales)} color="text-teal-600" bg="bg-teal-50" />
         <KpiCard icon={faCoins} label="Expenses" value={fmtRM(summary.expenses)} color="text-rose-600" bg="bg-rose-50" />
         <KpiCard icon={faPercent} label="Return on Expenses" value={`${summary.returnOnExpenses.toFixed(2)}x`} color="text-purple-600" bg="bg-purple-50" />
         <KpiCard icon={faBullseye} label="Ad Spend" value={fmtRM(summary.adSpend)} color="text-amber-600" bg="bg-amber-50" />
@@ -145,7 +147,7 @@ const Reports = () => {
       {/* CHARTS */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-[1.75rem] border border-gray-100 shadow-sm">
-          <h3 className="text-sm font-black text-gray-500 uppercase tracking-widest mb-4">Daily Sales (Last 30 Days)</h3>
+          <h3 className="text-sm font-black text-gray-500 uppercase tracking-widest mb-4">Daily Sales</h3>
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={dailyData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -158,7 +160,7 @@ const Reports = () => {
         </div>
 
         <div className="bg-white p-6 rounded-[1.75rem] border border-gray-100 shadow-sm">
-          <h3 className="text-sm font-black text-gray-500 uppercase tracking-widest mb-4">Weekly Sales (Last 12 Weeks)</h3>
+          <h3 className="text-sm font-black text-gray-500 uppercase tracking-widest mb-4">Weekly Sales</h3>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={weeklyData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -171,7 +173,7 @@ const Reports = () => {
         </div>
 
         <div className="bg-white p-6 rounded-[1.75rem] border border-gray-100 shadow-sm xl:col-span-2">
-          <h3 className="text-sm font-black text-gray-500 uppercase tracking-widest mb-4">Monthly Sales (Last 12 Months)</h3>
+          <h3 className="text-sm font-black text-gray-500 uppercase tracking-widest mb-4">Monthly Sales (12 Months)</h3>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={monthlyData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBullseye, faArrowLeft, faFloppyDisk, faClockRotateLeft, faCalendarDays } from "@fortawesome/free-solid-svg-icons";
+import { API_URL } from "../config";
 
 const monthNames = [
   "January", "February", "March", "April", "May", "June",
@@ -64,7 +65,7 @@ const ProjectTarget = () => {
   const fetchProjectId = async () => {
     try {
       const token = getToken();
-      const res = await fetch(`http://localhost:3000/projects/name/${encodeURIComponent(projectName)}`, {
+      const res = await fetch(`${API_URL}/projects/name/${encodeURIComponent(projectName)}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error("Project not found");
@@ -81,7 +82,7 @@ const ProjectTarget = () => {
   const fetchHistory = async () => {
     try {
       const token = getToken();
-      const res = await fetch(`http://localhost:3000/project-targets/${projectId}`, {
+      const res = await fetch(`${API_URL}/project-targets/${projectId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) setHistory(await res.json());
@@ -94,7 +95,7 @@ const ProjectTarget = () => {
     const [year, month] = selectedMonth.split("-").map(Number);
     try {
       const token = getToken();
-      const res = await fetch(`http://localhost:3000/project-targets/${projectId}/${year}/${month}`, {
+      const res = await fetch(`${API_URL}/project-targets/${projectId}/${year}/${month}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -119,7 +120,7 @@ const ProjectTarget = () => {
     const rows = blankDays(selectedMonth);
     try {
       const token = getToken();
-      const res = await fetch(`http://localhost:3000/project-targets/${projectId}/${year}/${month}/daily`, {
+      const res = await fetch(`${API_URL}/project-targets/${projectId}/${year}/${month}/daily`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -147,7 +148,7 @@ const ProjectTarget = () => {
     setSavingDaily(true);
     try {
       const token = getToken();
-      const res = await fetch("http://localhost:3000/project-targets/daily", {
+      const res = await fetch(`${API_URL}/project-targets/daily`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -187,7 +188,7 @@ const ProjectTarget = () => {
     setSaving(true);
     try {
       const token = getToken();
-      const res = await fetch("http://localhost:3000/project-targets", {
+      const res = await fetch(`${API_URL}/project-targets`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_URL } from "../config";
 
 // 🔧 Each subpage now carries its own URL path explicitly, rather than
 // deriving it from the label text. This fixes two issues:
@@ -33,7 +34,7 @@ const Sidebar = () => {
     // 1. Grab the token you saved during login
     const token = localStorage.getItem("token"); 
 
-    fetch("http://localhost:3000/projects", {
+    fetch(`${API_URL}/projects`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",

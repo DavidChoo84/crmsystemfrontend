@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom"; // 🔑 Added useNavigate
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
+import { API_URL } from "../config";
 
 const MainLayout = () => {
   const [projects, setProjects] = useState([]);
@@ -27,7 +28,7 @@ const MainLayout = () => {
         // 🔍 ADD THIS LOG TO DEBUG:
         console.log("Current Frontend Token:", token);
         
-        const res = await fetch("http://localhost:3000/projects", {
+        const res = await fetch(`${API_URL}/projects`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",

@@ -8,6 +8,7 @@ import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip
 } from "recharts";
+import { API_URL } from "../config";
 
 const fmtRM = (n) => `RM ${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
@@ -65,10 +66,10 @@ const DashboardSection = ({ title, projectIds, alwaysExpanded = false }) => {
       const headers = { Authorization: `Bearer ${token}` };
 
       const [summaryRes, dailyRes, weeklyRes, monthlyRes] = await Promise.all([
-        fetch(`http://localhost:3000/reports/${idsParam}/summary?year=${year}&month=${month}`, { headers }),
-        fetch(`http://localhost:3000/reports/${idsParam}/daily?year=${year}&month=${month}`, { headers }),
-        fetch(`http://localhost:3000/reports/${idsParam}/weekly?year=${year}&month=${month}`, { headers }),
-        fetch(`http://localhost:3000/reports/${idsParam}/monthly?months=12&year=${year}&month=${month}`, { headers }),
+        fetch(`${API_URL}/reports/${idsParam}/summary?year=${year}&month=${month}`, { headers }),
+        fetch(`${API_URL}/reports/${idsParam}/daily?year=${year}&month=${month}`, { headers }),
+        fetch(`${API_URL}/reports/${idsParam}/weekly?year=${year}&month=${month}`, { headers }),
+        fetch(`${API_URL}/reports/${idsParam}/monthly?months=12&year=${year}&month=${month}`, { headers }),
       ]);
 
       const failures = [];

@@ -13,6 +13,7 @@ import {
   faEye,
   faDownload
 } from "@fortawesome/free-solid-svg-icons";
+import { API_URL } from "../config";
 
 const OrderDetailModal = ({ order, onClose }) => {
   console.log("Current Order Object:", order);
@@ -27,7 +28,7 @@ const OrderDetailModal = ({ order, onClose }) => {
     if (order && order.customerId) {
       setIsLoadingCustomer(true);
       axios
-        .get(`http://localhost:3000/customers/${order.customerId}`)
+        .get(`${API_URL}/customers/${order.customerId}`)
         .then((res) => {
           setCustomerData(res.data);
         })
@@ -55,7 +56,7 @@ const OrderDetailModal = ({ order, onClose }) => {
     if (receiptImage.startsWith("http") || receiptImage.startsWith("data:")) {
       return receiptImage;
     }
-    return `http://localhost:3000/${receiptImage}`;
+    return `${API_URL}/${receiptImage}`;
   };
 
   // Routes through the backend's dedicated download endpoint, which sets
@@ -69,7 +70,7 @@ const OrderDetailModal = ({ order, onClose }) => {
     // can still save via the download attribute.
     if (receiptImage.startsWith("data:")) return receiptImage;
     const filename = receiptImage.split("/").pop();
-    return `http://localhost:3000/orders/receipt/${filename}`;
+    return `${API_URL}/orders/receipt/${filename}`;
   };
 
   // Helper for empty fields

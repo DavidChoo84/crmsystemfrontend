@@ -4,6 +4,7 @@ import { faEye, faPenToSquare, faTrash, faPlus, faFilter, faUndo } from "@fortaw
 
 import AssignmentDetailModal from "../components/AssignmentDetailModal";
 import AssignmentEditModal from "../components/AssignmentEditModal";
+import { API_URL } from "../config";
 
 const MemberAssignment = () => {
   const [assignments, setAssignments] = useState([]);
@@ -41,7 +42,7 @@ const MemberAssignment = () => {
   const fetchAssignments = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:3000/project-members", {
+      const res = await fetch(`${API_URL}/project-members`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error("Failed to fetch assignments");
@@ -62,8 +63,8 @@ const MemberAssignment = () => {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
       const [membersRes, projectsRes] = await Promise.all([
-        fetch("http://localhost:3000/project-members/members", { headers }),
-        fetch("http://localhost:3000/project-members/projects", { headers }),
+        fetch(`${API_URL}/project-members/members`, { headers }),
+        fetch(`${API_URL}/project-members/projects`, { headers }),
       ]);
 
       if (membersRes.ok) setMembers(await membersRes.json());
@@ -90,8 +91,8 @@ const MemberAssignment = () => {
     try {
       const isUpdate = !payload.isNew;
       const url = isUpdate
-        ? `http://localhost:3000/project-members/${payload.originalProjectId}/${payload.originalUserId}`
-        : `http://localhost:3000/project-members`;
+        ? `${API_URL}/project-members/${payload.originalProjectId}/${payload.originalUserId}`
+        : `${API_URL}/project-members`;
       const method = isUpdate ? "PUT" : "POST";
 
       const res = await fetch(url, {
@@ -151,7 +152,7 @@ const MemberAssignment = () => {
     if (!deleteAssignment) return;
     try {
       const res = await fetch(
-        `http://localhost:3000/project-members/${deleteAssignment.projectId}/${deleteAssignment.userId}`,
+        `${API_URL}/project-members/${deleteAssignment.projectId}/${deleteAssignment.userId}`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },

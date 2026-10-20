@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes, faSave, faFolderPlus, faHashtag, faFileSignature } from "@fortawesome/free-solid-svg-icons";
+import { API_URL } from "../config";
 
 const ProjectEditModal = ({ project, onClose, onSave }) => {
   const [loadingId, setLoadingId] = useState(false);
@@ -26,7 +27,7 @@ const ProjectEditModal = ({ project, onClose, onSave }) => {
   const fetchNextId = async () => {
     setLoadingId(true);
     try {
-      const res = await axios.get("http://localhost:3000/projects/next-id");
+      const res = await axios.get(`${API_URL}/projects/next-id`);
       setFormData(prev => ({ ...prev, projectId: res.data.nextId }));
     } catch (err) {
       console.error("Error fetching next project ID", err);

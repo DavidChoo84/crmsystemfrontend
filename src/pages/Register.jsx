@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { API_URL } from "../config";
 
 export const Register = () => {
   const [formData, setFormData] = useState({
@@ -26,7 +27,7 @@ export const Register = () => {
     const token = localStorage.getItem("token"); // Include if your endpoint remains guarded
 
     try {
-      await axios.post("http://localhost:3000/users/register", formData, {
+      await axios.post(`${API_URL}/users/register`, formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       alert("🎉 Account created successfully!");

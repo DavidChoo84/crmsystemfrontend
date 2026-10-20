@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrash, faGift, faBoxOpen } from "@fortawesome/free-solid-svg-icons";
+import { API_URL } from "../config";
 
 const PackageEditModal = ({ pkg, projectId, onClose, onSave }) => {
   const [products, setProducts] = useState([]);
@@ -93,7 +94,7 @@ const PackageEditModal = ({ pkg, projectId, onClose, onSave }) => {
 
     setLoadingProducts(true);
 
-    fetch(`http://localhost:3000/products`) 
+    fetch(`${API_URL}/products`) 
       .then(res => res.json())
       .then(data => {
         const projectProducts = data.filter(p => 

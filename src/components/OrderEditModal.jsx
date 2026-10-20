@@ -8,6 +8,7 @@ import {
 
 // IMPORT CUSTOMER EDIT MODAL
 import CustomerEditModal from "./CustomerEditModal"; 
+import { API_URL } from "../config";
 
 const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
   const [nextId, setNextId] = useState("");
@@ -87,7 +88,7 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
   // Fetch Next ID for New Orders
   useEffect(() => {
     if (order.isNew && !nextId) {
-      axios.get("http://localhost:3000/orders/next-id")
+      axios.get(`${API_URL}/orders/next-id`)
         .then(res => setNextId(res.data.nextId))
         .catch(err => console.error("Error fetching next ID", err));
     }
@@ -95,7 +96,7 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
 
   // Fetch Package Templates
   useEffect(() => {
-    axios.get("http://localhost:3000/packages")
+    axios.get(`${API_URL}/packages`)
       .then(res => setAvailablePackages(res.data))
       .catch(err => console.error("Failed to fetch templates", err));
   }, []);
@@ -224,7 +225,7 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
   const handleOpenNewCustomer = async () => {
     setFetchingCustomerId(true);
     try {
-      const res = await axios.get("http://localhost:3000/customers/next-id");
+      const res = await axios.get(`${API_URL}/customers/next-id`);
       setNewCustomerId(res.data.nextId || res.data || "");
     } catch (err) {
       console.error("Error fetching next customer ID", err);
@@ -247,7 +248,7 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
       // treated the raw, unsaved form payload as if it were already
       // saved. Now it actually POSTs to create the customer, matching
       // the same endpoint CustomerList.jsx's handleSaveCustomer uses.
-      const res = await axios.post("http://localhost:3000/customers", customerPayload);
+      const res = await axios.post(`${API_URL}/customers`, customerPayload);
       const saved = res.data;
 
       setFormData(prev => ({
@@ -277,8 +278,8 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
   const loadCustomerOptions = async (inputValue) => {
     try {
       const url = inputValue.length > 0 
-        ? `http://localhost:3000/customers/search?q=${inputValue}`
-        : `http://localhost:3000/customers`;
+        ? `${API_URL}/customers/search?q=${inputValue}`
+        : `${API_URL}/customers`;
       const res = await axios.get(url);
       return res.data.map(c => ({
         value: c.customerId,

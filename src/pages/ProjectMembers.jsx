@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUserGear, faArrowLeft, faPlus, faRightLeft, faTrash, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { API_URL } from "../config";
 
 const ProjectMembers = () => {
   const { projectName } = useParams();
@@ -43,7 +44,7 @@ const ProjectMembers = () => {
 
   const fetchProjectId = async () => {
     try {
-      const res = await fetch(`http://localhost:3000/projects/name/${encodeURIComponent(projectName)}`, {
+      const res = await fetch(`${API_URL}/projects/name/${encodeURIComponent(projectName)}`, {
         headers: authHeaders(),
       });
       if (!res.ok) throw new Error("Project not found");
@@ -60,9 +61,9 @@ const ProjectMembers = () => {
   const fetchAll = async () => {
     try {
       const [assignRes, membersRes, projectsRes] = await Promise.all([
-        fetch("http://localhost:3000/project-members", { headers: authHeaders() }),
-        fetch("http://localhost:3000/project-members/members", { headers: authHeaders() }),
-        fetch("http://localhost:3000/project-members/projects", { headers: authHeaders() }),
+        fetch(`${API_URL}/project-members`, { headers: authHeaders() }),
+        fetch(`${API_URL}/project-members/members`, { headers: authHeaders() }),
+        fetch(`${API_URL}/project-members/projects`, { headers: authHeaders() }),
       ]);
       if (assignRes.ok) setAssignments(await assignRes.json());
       if (membersRes.ok) setMembers(await membersRes.json());
@@ -82,7 +83,7 @@ const ProjectMembers = () => {
     e.preventDefault();
     if (!newMemberUserId) return;
     try {
-      const res = await fetch("http://localhost:3000/project-members", {
+      const res = await fetch(`${API_URL}/project-members`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ projectId, userId: newMemberUserId }),
@@ -110,7 +111,7 @@ const ProjectMembers = () => {
     if (!reassignTarget || !newProjectId) return;
     try {
       const res = await fetch(
-        `http://localhost:3000/project-members/${reassignTarget.projectId}/${reassignTarget.userId}`,
+        `${API_URL}/project-members/${reassignTarget.projectId}/${reassignTarget.userId}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json", ...authHeaders() },
@@ -151,7 +152,7 @@ const ProjectMembers = () => {
     if (!deleteTarget) return;
     try {
       const res = await fetch(
-        `http://localhost:3000/project-members/${deleteTarget.projectId}/${deleteTarget.userId}`,
+        `${API_URL}/project-members/${deleteTarget.projectId}/${deleteTarget.userId}`,
         { method: "DELETE", headers: authHeaders() }
       );
       if (!res.ok) throw new Error("Failed to remove member");

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_URL } from "../config";
 
 const ProductEditModal = ({ product, onClose, onSave }) => {
   const [formData, setFormData] = useState({
@@ -38,7 +39,7 @@ const ProductEditModal = ({ product, onClose, onSave }) => {
     if (!formData.projectId) return;
 
     const token = localStorage.getItem("token");
-    fetch("http://localhost:3000/products", {
+    fetch(`${API_URL}/products`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => (res.ok ? res.json() : []))

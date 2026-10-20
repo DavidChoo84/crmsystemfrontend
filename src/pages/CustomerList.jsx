@@ -5,6 +5,7 @@ import { faEye, faPenToSquare, faTrash, faPlus, faFilter, faUndo, faFileExcel } 
 // Assuming you have created these similar to your Product modals
 import CustomerDetailModal from "../components/CustomerDetailModal";
 import CustomerEditModal from "../components/CustomerEditModal";
+import { API_URL } from "../config";
 
 const fmtRM = (n) => `RM ${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -51,7 +52,7 @@ const CustomerList = () => {
   const fetchCustomers = async () => {
     try {
       console.log("🔍 Fetching Customers...");
-      const res = await fetch("http://localhost:3000/customers");
+      const res = await fetch(`${API_URL}/customers`);
       if (!res.ok) throw new Error("Failed to fetch customers");
       
       const data = await res.json();
@@ -68,7 +69,7 @@ const CustomerList = () => {
   // 2. Add Customer (Pre-fetch ID)
   const handleAdd = async () => {
     try {
-      const res = await fetch("http://localhost:3000/customers/next-id"); 
+      const res = await fetch(`${API_URL}/customers/next-id`); 
       let nextId = "C???";
       if (res.ok) {
         const data = await res.json();
@@ -105,8 +106,8 @@ const CustomerList = () => {
     try {
       const isUpdate = !updatedCustomer.isNew;
       const url = isUpdate
-        ? `http://localhost:3000/customers/${updatedCustomer.customerId}`
-        : `http://localhost:3000/customers`;
+        ? `${API_URL}/customers/${updatedCustomer.customerId}`
+        : `${API_URL}/customers`;
       const method = isUpdate ? "PUT" : "POST";
 
       const res = await fetch(url, {
@@ -157,7 +158,7 @@ const CustomerList = () => {
     if (!deleteCustomer) return;
     try {
       const res = await fetch(
-        `http://localhost:3000/customers/${deleteCustomer.customerId}`,
+        `${API_URL}/customers/${deleteCustomer.customerId}`,
         { method: "DELETE" }
       );
 
@@ -208,7 +209,7 @@ const CustomerList = () => {
     try {
       const [year, month] = exportMonth ? exportMonth.split("-").map(Number) : [];
       const query = exportMonth ? `?year=${year}&month=${month}` : "";
-      const res = await fetch(`http://localhost:3000/customers/export${query}`);
+      const res = await fetch(`${API_URL}/customers/export${query}`);
       if (!res.ok) throw new Error("Failed to load export data");
       const rows = await res.json();
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import DashboardSection from "../components/DashboardSection";
+import { API_URL } from "../config";
 
 const Dashboard = () => {
   const [projects, setProjects] = useState([]);
@@ -16,7 +17,7 @@ const Dashboard = () => {
   const fetchProjects = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:3000/projects", {
+      const res = await fetch(`${API_URL}/projects`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {

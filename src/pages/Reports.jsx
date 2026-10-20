@@ -9,6 +9,7 @@ import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip
 } from "recharts";
+import { API_URL } from "../config";
 
 const fmtRM = (n) => `RM ${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
@@ -58,7 +59,7 @@ const Reports = () => {
   const fetchProjectId = async () => {
     try {
       const token = getToken();
-      const res = await fetch(`http://localhost:3000/projects/name/${encodeURIComponent(projectName)}`, {
+      const res = await fetch(`${API_URL}/projects/name/${encodeURIComponent(projectName)}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error("Project not found");
@@ -76,7 +77,7 @@ const Reports = () => {
     try {
       const token = getToken();
       const res = await fetch(
-        `http://localhost:3000/reports/${projectId}/summary?year=${year}&month=${month}`,
+        `${API_URL}/reports/${projectId}/summary?year=${year}&month=${month}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (res.ok) setSummary(await res.json());
@@ -92,9 +93,9 @@ const Reports = () => {
       const headers = { Authorization: `Bearer ${token}` };
 
       const [dailyRes, weeklyRes, monthlyRes] = await Promise.all([
-        fetch(`http://localhost:3000/reports/${projectId}/daily?year=${year}&month=${month}`, { headers }),
-        fetch(`http://localhost:3000/reports/${projectId}/weekly?year=${year}&month=${month}`, { headers }),
-        fetch(`http://localhost:3000/reports/${projectId}/monthly?months=12&year=${year}&month=${month}`, { headers }),
+        fetch(`${API_URL}/reports/${projectId}/daily?year=${year}&month=${month}`, { headers }),
+        fetch(`${API_URL}/reports/${projectId}/weekly?year=${year}&month=${month}`, { headers }),
+        fetch(`${API_URL}/reports/${projectId}/monthly?months=12&year=${year}&month=${month}`, { headers }),
       ]);
 
       if (dailyRes.ok) setDailyData(await dailyRes.json());

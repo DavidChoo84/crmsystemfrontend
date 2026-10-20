@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { API_URL } from "../config";
 
 export const Login = () => {
   const [view, setView] = useState("login"); // "login" | "forgot"
@@ -24,7 +25,7 @@ export const Login = () => {
     setMessage({ type: "", text: "" });
 
     try {
-      const response = await fetch("http://localhost:3000/auth/login", {
+      const response = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, password }),
@@ -59,7 +60,7 @@ export const Login = () => {
     setModalError("");
 
     try {
-      const response = await fetch("http://localhost:3000/auth/login", {
+      const response = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: masterId, password: masterPassword }),
@@ -95,7 +96,7 @@ export const Login = () => {
     setMessage({ type: "", text: "" });
 
     try {
-      const response = await fetch("http://localhost:3000/auth/forgot-password", {
+      const response = await fetch(`${API_URL}/auth/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),

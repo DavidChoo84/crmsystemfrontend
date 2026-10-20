@@ -3,6 +3,7 @@ import { useNavigate, useOutletContext } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFolder, faPlus } from "@fortawesome/free-solid-svg-icons"; // Use faFolder for the welcome screen
 import ProjectEditModal from "./ProjectEditModal";
+import { API_URL } from "../config";
 
 const ProjectRedirect = () => {
   // fetchProjects is passed from the Parent/Layout context to force a refresh
@@ -21,7 +22,7 @@ const ProjectRedirect = () => {
 
   const handleSaveProject = async (formData) => {
     try {
-      const res = await fetch("http://localhost:3000/projects", {
+      const res = await fetch(`${API_URL}/projects`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),

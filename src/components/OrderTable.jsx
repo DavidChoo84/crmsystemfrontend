@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEye, faPenToSquare, faBan, faPaperPlane, faRotateLeft, faBoxOpen } from "@fortawesome/free-solid-svg-icons";
+import { faEye, faPenToSquare, faBan, faPaperPlane, faRotateLeft, faBoxOpen, faGift } from "@fortawesome/free-solid-svg-icons";
 
 export const OrderTable = ({ orders, viewMode = "orders", onSelect, onEdit, onCancel, onMarkAsSent, onMarkAsFailed }) => {
   const isLogistic = viewMode === "logistic";
@@ -54,6 +54,8 @@ export const OrderTable = ({ orders, viewMode = "orders", onSelect, onEdit, onCa
     return names.length > 0 ? names.join(", ") : "—";
   };
 
+  const hasFreeGift = (order) => order.orderPackages?.some((p) => p.hasFreeGift);
+
   return (
     <>
       <div className="bg-white rounded-xl shadow-md overflow-hidden">
@@ -80,7 +82,12 @@ export const OrderTable = ({ orders, viewMode = "orders", onSelect, onEdit, onCa
           {orders.length > 0 ? (
             orders.map((order) => (
               <tr key={order.orderId} className="border-b hover:bg-gray-50 transition-colors">
-                <td className="py-3 px-4 font-bold text-blue-600">{order.orderId}</td>
+                <td className="py-3 px-4 font-bold text-blue-600">
+                  {order.orderId}
+                  {hasFreeGift(order) && (
+                    <FontAwesomeIcon icon={faGift} className="ml-2 text-pink-500" title="Includes free gift" />
+                  )}
+                </td>
                 <td className="py-3 px-4 text-sm">
                   {new Date(order.orderDate || order.createdAt).toLocaleDateString()}
                 </td>
@@ -238,7 +245,12 @@ export const OrderTable = ({ orders, viewMode = "orders", onSelect, onEdit, onCa
                   hoveredOrder.orderPackages.map((pkg, pIdx) => (
                     <React.Fragment key={pIdx}>
                       <tr className="border-t bg-gray-50">
-                        <td className="px-3 py-2 text-blue-700 font-semibold">{pkg.packageName}</td>
+                        <td className="px-3 py-2 text-blue-700 font-semibold">
+                          {pkg.packageName}
+                          {pkg.hasFreeGift && (
+                            <FontAwesomeIcon icon={faGift} className="ml-1.5 text-pink-500" title="Free gift" />
+                          )}
+                        </td>
                         <td className="px-3 py-2 text-right font-semibold">{Number(pkg.packagePrice).toFixed(2)}</td>
                         <td className="px-3 py-2 text-center font-semibold">{pkg.quantity}</td>
                         <td className="px-3 py-2 text-right font-semibold">

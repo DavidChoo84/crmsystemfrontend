@@ -1,14 +1,20 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEye, faPenToSquare, faTrash, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faEye, faPenToSquare, faTrash, faPlus, faGift } from "@fortawesome/free-solid-svg-icons";
 import ProductDetailModal from "../components/ProductDetailModal";
 import ProductEditModal from "../components/ProductEditModal";
 
+// The project comes from the sidebar (URL); this only switches between the
+// project's main products and its free gift items.
+const VIEW_PRODUCTS = "products";
+const VIEW_GIFTS = "gifts"; // sub-products (linked to a parent product) — used as free gift items
+
 const ProductList = () => {
   const { projectName } = useParams();
-  const [products, setProducts] = useState([]);
+  const [allProducts, setAllProducts] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
+  const [view, setView] = useState(VIEW_PRODUCTS);
 
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [editProduct, setEditProduct] = useState(null);
@@ -63,11 +69,10 @@ const ProductList = () => {
       if (!matchedProject) {
         console.error("❌ ERROR: Could not find project with name:", targetName);
         console.warn("   Available names:", projectsData.map(p => p.projectName));
-        setProducts([]);
-        return; 
       }
 
-      setSelectedProject(matchedProject);
+      setSelectedProject(matchedProject || null);
+      setView(VIEW_PRODUCTS);
 
       // 3. Fetch Products (Secured)
       const resProducts = await fetch("http://localhost:3000/products", {
@@ -80,19 +85,14 @@ const ProductList = () => {
 
       console.log("   Fetched All Products:", productsData);
 
-      // 4. Filter Products
-      const filtered = productsData.filter((prod) => {
-        const prodProjectId = prod.project ? prod.project.projectId : "NULL";
-        return prodProjectId === matchedProject.projectId;
-      });
+      // 4. Keep only this project's products
+      const projectProducts = matchedProject
+        ? productsData.filter(
+            (prod) => (prod.project?.projectId || prod.projectId) === matchedProject.projectId
+          )
+        : [];
 
-      console.log("   Filtered Products for this project:", filtered);
-
-      if (filtered.length === 0) {
-        console.warn("⚠️ Project found, but no products are linked to it.");
-      }
-
-      setProducts(filtered.sort((a, b) => a.productId.localeCompare(b.productId)));
+      setAllProducts(projectProducts.sort((a, b) => a.productId.localeCompare(b.productId)));
 
     } catch (error) {
       console.error("CRITICAL ERROR:", error);
@@ -100,9 +100,19 @@ const ProductList = () => {
     }
   };
 
+  const isFreeGiftItem = (prod) => !!prod.parentProductId;
+  const matchesView = (prod, value) => (value === VIEW_GIFTS ? isFreeGiftItem(prod) : !isFreeGiftItem(prod));
+
+  const products = allProducts.filter((prod) => matchesView(prod, view));
+  const countFor = (value) => allProducts.filter((prod) => matchesView(prod, value)).length;
+
+  // New products (and free gift items, linked to a parent in the form) go to the sidebar's project.
+  const addTargetProject = selectedProject;
+  const showParentColumn = view === VIEW_GIFTS;
+
   // Add Product
   const handleAdd = async () => {
-    if (!selectedProject) {
+    if (!addTargetProject) {
       showNotification("Project not found. Cannot add product.", "error");
       return;
     }
@@ -128,7 +138,7 @@ const ProductList = () => {
         quantity: "",
         unit: "",
         quantityPerBox: "",
-        project: selectedProject,
+        project: addTargetProject,
       });
 
       setShowEditModal(true);
@@ -156,7 +166,7 @@ const ProductList = () => {
 
       const bodyData = isUpdate
         ? updatedProduct
-        : { ...updatedProduct, project: selectedProject };
+        : { ...updatedProduct, project: addTargetProject };
 
       // Save request (Secured)
       const res = await fetch(url, {
@@ -172,7 +182,7 @@ const ProductList = () => {
 
       const saved = await res.json();
 
-      setProducts((prev) =>
+      setAllProducts((prev) =>
         isUpdate
           ? prev.map((p) => (p.productId === saved.productId ? saved : p))
           : [...prev, saved]
@@ -225,7 +235,7 @@ const ProductList = () => {
 
       if (!res.ok) throw new Error("Failed to delete product");
 
-      setProducts((prev) =>
+      setAllProducts((prev) =>
         prev.filter((p) => p.productId !== deleteProduct.productId)
       );
 
@@ -255,15 +265,41 @@ const ProductList = () => {
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-semibold text-gray-800">
-            {projectName} — Product List
+            {selectedProject?.projectName || projectName} —{" "}
+            {view === VIEW_GIFTS ? "Free Gift Items" : "Product List"}
           </h2>
           <button
             onClick={handleAdd}
             className="flex items-center gap-2 px-5 py-2 rounded-full bg-blue-600 text-white font-medium hover:bg-blue-700 transition"
           >
             <FontAwesomeIcon icon={faPlus} />
-            Add Product
+            {view === VIEW_GIFTS ? "Add Free Gift Item" : "Add Product"}
           </button>
+        </div>
+
+        {/* Products / Free gift toggle (project is chosen in the sidebar) */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {[
+            { value: VIEW_PRODUCTS, label: "Products", count: countFor(VIEW_PRODUCTS) },
+            { value: VIEW_GIFTS, label: "Free Gift Items", icon: faGift, count: countFor(VIEW_GIFTS) },
+          ].map(({ value, label, icon, count }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setView(value)}
+              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium border transition ${
+                view === value
+                  ? value === VIEW_GIFTS
+                    ? "bg-pink-600 text-white border-pink-600"
+                    : "bg-blue-600 text-white border-blue-600"
+                  : "bg-white text-gray-600 border-gray-200 hover:border-blue-300"
+              }`}
+            >
+              {icon && <FontAwesomeIcon icon={icon} />}
+              {label}
+              <span className={`text-xs ${view === value ? "opacity-80" : "text-gray-400"}`}>({count})</span>
+            </button>
+          ))}
         </div>
 
         {/* Table */}
@@ -272,6 +308,7 @@ const ProductList = () => {
             <thead className="bg-gray-100 text-gray-600 uppercase text-sm">
               <tr>
                 <th className="py-3 px-4">Product Name</th>
+                {showParentColumn && <th className="py-3 px-4">Parent Product</th>}
                 <th className="py-3 px-4">Costing</th>
                 <th className="py-3 px-4">Quantity</th>
                 <th className="py-3 px-4">Unit</th>
@@ -287,6 +324,12 @@ const ProductList = () => {
                     className="border-b hover:bg-gray-50 transition-colors"
                   >
                     <td className="py-3 px-4">{p.productName}</td>
+                    {showParentColumn && (
+                      <td className="py-3 px-4 text-sm text-gray-600">
+                        {allProducts.find((parent) => parent.productId === p.parentProductId)?.productName ||
+                          p.parentProductId}
+                      </td>
+                    )}
                     <td className="py-3 px-4">{p.costing}</td>
                     <td className="py-3 px-4">{p.quantity}</td>
                     <td className="py-3 px-4">{p.unit}</td>
@@ -319,7 +362,7 @@ const ProductList = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="text-center py-6 text-gray-500">
+                  <td colSpan={showParentColumn ? 7 : 6} className="text-center py-6 text-gray-500">
                     No products found.
                   </td>
                 </tr>

@@ -11,7 +11,8 @@ import {
   faCircleCheck,
   faReceipt,
   faEye,
-  faDownload
+  faDownload,
+  faGift
 } from "@fortawesome/free-solid-svg-icons";
 import { API_URL } from "../config";
 
@@ -109,6 +110,9 @@ const OrderDetailModal = ({ order, onClose }) => {
 
   const statusConfig = getOrderStatusConfig(order.status);
 
+  // Packages flagged with a free gift — surfaced as a packing reminder above the items table
+  const giftPackages = order.orderPackages?.filter((pkg) => pkg.hasFreeGift) || [];
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 backdrop-blur-sm">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[95vh] flex flex-col overflow-hidden relative">
@@ -204,6 +208,14 @@ const OrderDetailModal = ({ order, onClose }) => {
             <h4 className="flex items-center gap-2 text-lg font-bold text-gray-700 mb-3">
               <FontAwesomeIcon icon={faBoxOpen} className="text-orange-500" /> Order Items
             </h4>
+            {giftPackages.length > 0 && (
+              <div className="mb-3 flex items-start gap-2 bg-pink-50 border border-pink-200 text-pink-700 text-sm rounded-lg px-4 py-2.5">
+                <FontAwesomeIcon icon={faGift} className="mt-0.5" />
+                <span>
+                  <span className="font-bold">Include free gift</span> with: {giftPackages.map((pkg) => pkg.packageName).join(", ")}
+                </span>
+              </div>
+            )}
             <div className="border rounded-xl overflow-hidden shadow-sm">
               <table className="w-full text-sm text-left border-collapse">
                 <thead className="bg-gray-800 text-white font-medium uppercase text-xs">
@@ -218,7 +230,14 @@ const OrderDetailModal = ({ order, onClose }) => {
                   {order.orderPackages?.map((pkg, pIdx) => (
                     <React.Fragment key={pIdx}>
                       <tr className="bg-gray-50 border-t font-semibold">
-                        <td className="px-4 py-3 text-blue-700">{pkg.packageName}</td>
+                        <td className="px-4 py-3 text-blue-700">
+                          {pkg.packageName}
+                          {pkg.hasFreeGift && (
+                            <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-bold uppercase bg-pink-100 text-pink-600 border border-pink-200 px-1.5 py-0.5 rounded">
+                              <FontAwesomeIcon icon={faGift} /> Free Gift
+                            </span>
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-right">{Number(pkg.packagePrice).toFixed(2)}</td>
                         <td className="px-4 py-3 text-center">{pkg.quantity}</td>
                         <td className="px-4 py-3 text-right">{(pkg.packagePrice * pkg.quantity).toFixed(2)}</td>

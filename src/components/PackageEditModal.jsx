@@ -97,7 +97,7 @@ const PackageEditModal = ({ pkg, projectId, onClose, onSave }) => {
     fetch(`${API_URL}/products`) 
       .then(res => res.json())
       .then(data => {
-        const projectProducts = data.filter(p => 
+        const projectProducts = data.filter(p =>
             p.project?.projectId === targetProjectId || p.projectId === targetProjectId
         );
         setProducts(projectProducts);
@@ -286,11 +286,20 @@ const PackageEditModal = ({ pkg, projectId, onClose, onSave }) => {
                         className="w-full text-sm border-gray-300 rounded bg-white py-1 px-2 focus:ring-1 focus:ring-blue-500 outline-none"
                       >
                         <option value="">-- Select Product --</option>
-                        {products.map(p => (
-                          <option key={p.productId} value={p.productId}>
-                            {p.productName} (Cost: {p.costing})
-                          </option>
-                        ))}
+                        <optgroup label="Main Products">
+                          {products.filter(p => !p.parentProductId).map(p => (
+                            <option key={p.productId} value={p.productId}>
+                              {p.productName} (Cost: {p.costing})
+                            </option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Other (Free Gift Items)">
+                          {products.filter(p => p.parentProductId).map(p => (
+                            <option key={p.productId} value={p.productId}>
+                              🎁 {p.productName} (Cost: {p.costing})
+                            </option>
+                          ))}
+                        </optgroup>
                       </select>
                     </div>
 

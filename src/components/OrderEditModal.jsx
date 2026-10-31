@@ -3,7 +3,7 @@ import AsyncSelect from "react-select/async";
 import axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { 
-  faTimes, faSave, faTrash, faUserCheck, faTruck, faUserPlus, faCreditCard, faUserTie, faClipboardList, faBullhorn
+  faTimes, faSave, faTrash, faUserCheck, faTruck, faUserPlus, faCreditCard, faUserTie, faClipboardList, faBullhorn, faGift
 } from "@fortawesome/free-solid-svg-icons";
 
 // IMPORT CUSTOMER EDIT MODAL
@@ -161,11 +161,16 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
     const template = availablePackages.find(p => p.packageId === templateId);
     if (!template) return;
 
+    // 🎁 Auto-detect: the template carries a free gift if any of its products is flagged isFreeItem
+    const giftItems = template.packageProducts?.filter(pp => pp.isFreeItem) || [];
+
     const newPkg = {
       packageId: template.packageId, // 🔑 needed to trace this line back to a project for Reports
       packageName: template.packageName,
       packagePrice: Number(template.sellingPrice),
       quantity: 1,
+      hasFreeGift: giftItems.length > 0,
+      freeGiftNames: giftItems.map(pp => pp.product?.productName).filter(Boolean), // display only — stripped by backend whitelist
       orderProducts: template.packageProducts?.map(pp => ({
         productId: pp.product?.productId || "",
         productName: pp.product?.productName || "Unknown",
@@ -190,8 +195,9 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
         { 
           packageId: null, // custom items have no template — won't count toward any project's Reports
           packageName: "", 
-          packagePrice: 0, 
-          quantity: 1, 
+          packagePrice: 0,
+          quantity: 1,
+          hasFreeGift: false,
           orderProducts: [{ productId: "CUSTOM_ITEM", productName: "Custom Item", quantity: 1 }] 
         }
       ] 
@@ -270,7 +276,9 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
     e.preventDefault();
     onSave({
       ...formData,
-      orderId: order.isNew ? nextId : formData.orderId
+      orderId: order.isNew ? nextId : formData.orderId,
+      // freeGiftNames is UI-only — don't send it to the API
+      orderPackages: formData.orderPackages.map(({ freeGiftNames, ...pkg }) => pkg)
     });
   };
 
@@ -438,7 +446,8 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
                 </div>
               ) : (
                 formData.orderPackages.map((pkg, index) => (
-                  <div key={index} className="flex gap-4 items-end bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                  <div key={index} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                  <div className="flex gap-4 items-end">
                     <div className="flex-1">
                       <label className="text-[10px] font-bold text-gray-400 uppercase">Package Description</label>
                       <input type="text" value={pkg.packageName} onChange={(e) => handlePackageChange(index, "packageName", e.target.value)} disabled={lockOrderFields} className={lockOrderFields ? readOnlyStyle : inputStyle} placeholder="Enter name..." />
@@ -451,11 +460,37 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
                       <label className="text-[10px] font-bold text-gray-400 uppercase">Qty</label>
                       <input type="number" value={pkg.quantity} onChange={(e) => handlePackageChange(index, "quantity", e.target.value)} disabled={lockOrderFields} className={lockOrderFields ? readOnlyStyle : inputStyle} />
                     </div>
+                    {/* 🎁 Free gift toggle — stays visible in logistic view (read-only) so packers know to include it */}
+                    <div className="w-28">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase">Free Gift</label>
+                      <button
+                        type="button"
+                        onClick={() => handlePackageChange(index, "hasFreeGift", !pkg.hasFreeGift)}
+                        disabled={lockOrderFields}
+                        aria-pressed={!!pkg.hasFreeGift}
+                        title={pkg.hasFreeGift ? "Free gift included" : "No free gift"}
+                        className={`w-full h-[42px] rounded-lg border text-sm font-bold flex items-center justify-center gap-1.5 transition ${
+                          pkg.hasFreeGift
+                            ? "bg-pink-50 border-pink-300 text-pink-600"
+                            : "bg-white border-gray-200 text-gray-400"
+                        } ${lockOrderFields ? "cursor-not-allowed opacity-70" : "hover:border-pink-300 active:scale-95"}`}
+                      >
+                        <FontAwesomeIcon icon={faGift} />
+                        {pkg.hasFreeGift ? "Yes" : "No"}
+                      </button>
+                    </div>
                     {!lockOrderFields && (
                       <button type="button" onClick={() => removePackage(index)} className="p-2.5 text-gray-400 hover:text-red-500 transition">
                         <FontAwesomeIcon icon={faTrash} />
                       </button>
                     )}
+                  </div>
+                  {pkg.hasFreeGift && pkg.freeGiftNames?.length > 0 && (
+                    <p className="mt-2 text-xs text-pink-600 flex items-center gap-1.5">
+                      <FontAwesomeIcon icon={faGift} />
+                      Package includes free gift: <span className="font-semibold">{pkg.freeGiftNames.join(", ")}</span>
+                    </p>
+                  )}
                   </div>
                 ))
               )}

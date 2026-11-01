@@ -5,6 +5,7 @@ import { faEye, faPenToSquare, faTrash, faPlus, faGift } from "@fortawesome/free
 import ProductDetailModal from "../components/ProductDetailModal";
 import ProductEditModal from "../components/ProductEditModal";
 import { getFetchErrorMessage } from "../utils/apiError";
+import { API_URL } from "../config";
 
 // The project comes from the sidebar (URL); this only switches between the
 // project's main products and its free gift items.
@@ -47,7 +48,7 @@ const ProductList = () => {
       const token = localStorage.getItem("token"); // 🚀 Get token
 
       // 1. Fetch Projects (Secured)
-      const resProjects = await fetch("http://localhost:3000/projects", {
+      const resProjects = await fetch(`${API_URL}/projects`, {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${token}`
@@ -76,7 +77,7 @@ const ProductList = () => {
       setView(VIEW_PRODUCTS);
 
       // 3. Fetch Products (Secured)
-      const resProducts = await fetch("http://localhost:3000/products", {
+      const resProducts = await fetch(`${API_URL}/products`, {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${token}`
@@ -122,7 +123,7 @@ const ProductList = () => {
       const token = localStorage.getItem("token"); // 🚀 Get token
 
       // Fetch next product ID (Secured)
-      const res = await fetch("http://localhost:3000/products/next-id", {
+      const res = await fetch(`${API_URL}/products/next-id`, {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${token}`
@@ -161,8 +162,8 @@ const ProductList = () => {
       const token = localStorage.getItem("token"); // 🚀 Get token
       const isUpdate = !updatedProduct.isNew;
       const url = isUpdate
-        ? `http://localhost:3000/products/${updatedProduct.productId}`
-        : `http://localhost:3000/products`;
+        ? `${API_URL}/products/${updatedProduct.productId}`
+        : `${API_URL}/products`;
       const method = isUpdate ? "PUT" : "POST";
 
       const bodyData = isUpdate
@@ -225,7 +226,7 @@ const ProductList = () => {
 
       // Delete request (Secured)
       const res = await fetch(
-        `http://localhost:3000/products/${deleteProduct.productId}`,
+        `${API_URL}/products/${deleteProduct.productId}`,
         { 
           method: "DELETE",
           headers: {

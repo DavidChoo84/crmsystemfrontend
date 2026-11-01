@@ -5,6 +5,7 @@ import { faEye, faPenToSquare, faTrash, faPlus } from "@fortawesome/free-solid-s
 import PackageDetailModal from "../components/PackageDetailModal";
 import PackageEditModal from "../components/PackageEditModal";
 import { getFetchErrorMessage } from "../utils/apiError";
+import { API_URL } from "../config";
 
 const PackageList = () => {
   const { projectName } = useParams();
@@ -36,7 +37,7 @@ const PackageList = () => {
       const token = localStorage.getItem("token"); // 🚀 Get token
 
       // 1. Fetch Projects (Secured)
-      const resProjects = await fetch("http://localhost:3000/projects", {
+      const resProjects = await fetch(`${API_URL}/projects`, {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${token}`
@@ -57,7 +58,7 @@ const PackageList = () => {
       }
 
       // 2. Fetch Packages (Secured)
-      const resPackages = await fetch("http://localhost:3000/packages", {
+      const resPackages = await fetch(`${API_URL}/packages`, {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${token}`
@@ -87,7 +88,7 @@ const PackageList = () => {
       const token = localStorage.getItem("token"); // 🚀 Get token
 
       // Fetch next ID (Secured)
-      const res = await fetch("http://localhost:3000/packages/next-id", {
+      const res = await fetch(`${API_URL}/packages/next-id`, {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${token}`
@@ -125,8 +126,8 @@ const PackageList = () => {
       const token = localStorage.getItem("token"); // 🚀 Get token
       const isUpdate = !updatedPackage.isNew;
       const url = isUpdate
-        ? `http://localhost:3000/packages/${updatedPackage.packageId}`
-        : `http://localhost:3000/packages`;
+        ? `${API_URL}/packages/${updatedPackage.packageId}`
+        : `${API_URL}/packages`;
       
       const method = isUpdate ? "PATCH" : "POST";
 
@@ -179,7 +180,7 @@ const PackageList = () => {
 
       // Delete request (Secured)
       const res = await fetch(
-        `http://localhost:3000/packages/${deletePackage.packageId}`,
+        `${API_URL}/packages/${deletePackage.packageId}`,
         { 
           method: "DELETE",
           headers: {

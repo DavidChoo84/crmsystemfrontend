@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes, faSave, faFolderPlus, faHashtag, faFileSignature } from "@fortawesome/free-solid-svg-icons";
+import { API_URL } from "../config";
 
 const ProjectEditModal = ({ project, onClose, onSave }) => {
   const [loadingId, setLoadingId] = useState(false);
@@ -28,7 +29,7 @@ const ProjectEditModal = ({ project, onClose, onSave }) => {
     try {
       // /projects is behind JwtAuthGuard — without the token this returns 401
       const token = localStorage.getItem("token");
-      const res = await axios.get("http://localhost:3000/projects/next-id", {
+      const res = await axios.get(`${API_URL}/projects/next-id`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setFormData(prev => ({ ...prev, projectId: res.data.nextId }));

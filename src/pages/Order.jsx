@@ -6,6 +6,7 @@ import OrderEditModal from "../components/OrderEditModal";
 import { OrderFilters } from "../components/OrderFilters";
 import { OrderTable } from "../components/OrderTable";
 import { getFetchErrorMessage } from "../utils/apiError";
+import { API_URL } from "../config";
 
 const Order = ({ viewMode = "orders" }) => {
   const [orders, setOrders] = useState([]);
@@ -38,8 +39,8 @@ const Order = ({ viewMode = "orders" }) => {
     try {
       const token = localStorage.getItem("token"); // 🚀 Get token
       const url = filterProjectId
-        ? `http://localhost:3000/orders?projectId=${filterProjectId}`
-        : "http://localhost:3000/orders";
+        ? `${API_URL}/orders?projectId=${filterProjectId}`
+        : `${API_URL}/orders`;
       const res = await fetch(url, {
         method: "GET",
         headers: {
@@ -57,7 +58,7 @@ const Order = ({ viewMode = "orders" }) => {
   const fetchProjects = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:3000/projects", {
+      const res = await fetch(`${API_URL}/projects`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (res.ok) setProjects(await res.json());
@@ -75,7 +76,7 @@ const Order = ({ viewMode = "orders" }) => {
   const handleMarkAsSent = async (orderId) => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:3000/orders/${orderId}/status`, {
+      const res = await fetch(`${API_URL}/orders/${orderId}/status`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -102,7 +103,7 @@ const Order = ({ viewMode = "orders" }) => {
   const handleMarkAsFailed = async (orderId) => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:3000/orders/${orderId}/status`, {
+      const res = await fetch(`${API_URL}/orders/${orderId}/status`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -136,7 +137,7 @@ const Order = ({ viewMode = "orders" }) => {
         const formData = new FormData();
         formData.append("file", rawFile);
 
-        const uploadRes = await fetch("http://localhost:3000/orders/upload", {
+        const uploadRes = await fetch(`${API_URL}/orders/upload`, {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${token}` // Pass token safely without breaking multipart boundary
@@ -152,8 +153,8 @@ const Order = ({ viewMode = "orders" }) => {
 
       // 2. Prepare JSON payload
       const url = isUpdate 
-        ? `http://localhost:3000/orders/${orderData.orderId}` 
-        : `http://localhost:3000/orders`;
+        ? `${API_URL}/orders/${orderData.orderId}` 
+        : `${API_URL}/orders`;
       
       const payload = { 
         ...orderData, 
@@ -190,7 +191,7 @@ const Order = ({ viewMode = "orders" }) => {
     if (!cancelOrder) return;
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:3000/orders/${cancelOrder.orderId}/status`, {
+      const res = await fetch(`${API_URL}/orders/${cancelOrder.orderId}/status`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

@@ -9,6 +9,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import ProjectEditModal from "../components/ProjectEditModal";
 import { getFetchErrorMessage } from "../utils/apiError";
+import { API_URL } from "../config";
 
 const Project = () => {
   const navigate = useNavigate();
@@ -39,7 +40,7 @@ const Project = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token"); // 🚀 Get the token
-      const res = await fetch(`http://localhost:3000/projects/name/${encodeURIComponent(projectName)}`, {
+      const res = await fetch(`${API_URL}/projects/name/${encodeURIComponent(projectName)}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -62,7 +63,7 @@ const Project = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token"); // 🚀 Get the token
-      const res = await fetch("http://localhost:3000/projects", {
+      const res = await fetch(`${API_URL}/projects`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -87,7 +88,7 @@ const Project = () => {
     if (!isAdmin) return; // 🔒 defensive guard, in case this is ever called programmatically
     try {
       const token = localStorage.getItem("token"); // 🚀 Get the token
-      const res = await fetch("http://localhost:3000/projects", {
+      const res = await fetch(`${API_URL}/projects`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -107,7 +108,7 @@ const Project = () => {
     if (!isAdmin) return; // 🔒 defensive guard
     try {
       const token = localStorage.getItem("token"); // 🚀 Get the token
-      const res = await fetch(`http://localhost:3000/projects/${projectData.projectId}`, {
+      const res = await fetch(`${API_URL}/projects/${projectData.projectId}`, {
         method: "PUT",
         headers: { 
           "Content-Type": "application/json",
@@ -136,7 +137,7 @@ const Project = () => {
     setIsDeleting(true);
     try {
       const token = localStorage.getItem("token"); // 🚀 Get the token
-      const res = await fetch(`http://localhost:3000/projects/${projectData.projectId}`, {
+      const res = await fetch(`${API_URL}/projects/${projectData.projectId}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",

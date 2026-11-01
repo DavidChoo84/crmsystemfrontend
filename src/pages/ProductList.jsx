@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faPenToSquare, faTrash, faPlus, faGift } from "@fortawesome/free-solid-svg-icons";
 import ProductDetailModal from "../components/ProductDetailModal";
 import ProductEditModal from "../components/ProductEditModal";
-import { API_URL } from "../config";
+import { getFetchErrorMessage } from "../utils/apiError";
 
 // The project comes from the sidebar (URL); this only switches between the
 // project's main products and its free gift items.
@@ -47,7 +47,7 @@ const ProductList = () => {
       const token = localStorage.getItem("token"); // 🚀 Get token
 
       // 1. Fetch Projects (Secured)
-      const resProjects = await fetch(`${API_URL}/projects`, {
+      const resProjects = await fetch("http://localhost:3000/projects", {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${token}`
@@ -76,7 +76,7 @@ const ProductList = () => {
       setView(VIEW_PRODUCTS);
 
       // 3. Fetch Products (Secured)
-      const resProducts = await fetch(`${API_URL}/products`, {
+      const resProducts = await fetch("http://localhost:3000/products", {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${token}`
@@ -122,7 +122,7 @@ const ProductList = () => {
       const token = localStorage.getItem("token"); // 🚀 Get token
 
       // Fetch next product ID (Secured)
-      const res = await fetch(`${API_URL}/products/next-id`, {
+      const res = await fetch("http://localhost:3000/products/next-id", {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${token}`
@@ -161,8 +161,8 @@ const ProductList = () => {
       const token = localStorage.getItem("token"); // 🚀 Get token
       const isUpdate = !updatedProduct.isNew;
       const url = isUpdate
-        ? `${API_URL}/products/${updatedProduct.productId}`
-        : `${API_URL}/products`;
+        ? `http://localhost:3000/products/${updatedProduct.productId}`
+        : `http://localhost:3000/products`;
       const method = isUpdate ? "PUT" : "POST";
 
       const bodyData = isUpdate
@@ -179,7 +179,7 @@ const ProductList = () => {
         body: JSON.stringify(bodyData),
       });
 
-      if (!res.ok) throw new Error("Failed to save product");
+      if (!res.ok) throw new Error(await getFetchErrorMessage(res, "Failed to save product"));
 
       const saved = await res.json();
 
@@ -198,7 +198,7 @@ const ProductList = () => {
       setEditProduct(null);
     } catch (err) {
       console.error("Error saving product:", err);
-      showNotification("Failed to save product", "error");
+      showNotification(err.message || "Failed to save product", "error", 6000);
     }
   };
 
@@ -225,7 +225,7 @@ const ProductList = () => {
 
       // Delete request (Secured)
       const res = await fetch(
-        `${API_URL}/products/${deleteProduct.productId}`,
+        `http://localhost:3000/products/${deleteProduct.productId}`,
         { 
           method: "DELETE",
           headers: {
@@ -254,7 +254,7 @@ const ProductList = () => {
       {/* Notification */}
       {notification.message && (
         <div
-          className={`fixed top-4 right-4 px-4 py-2 rounded shadow-md text-white z-50 ${
+          className={`fixed top-4 right-4 px-4 py-2 rounded shadow-md text-white z-[60] max-w-md whitespace-pre-line ${
             notification.type === "success" ? "bg-green-500" : "bg-red-500"
           }`}
         >

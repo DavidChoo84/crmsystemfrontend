@@ -5,7 +5,7 @@ import OrderDetailModal from "../components/OrderDetailModal";
 import OrderEditModal from "../components/OrderEditModal";
 import { OrderFilters } from "../components/OrderFilters";
 import { OrderTable } from "../components/OrderTable";
-import { API_URL } from "../config";
+import { getFetchErrorMessage } from "../utils/apiError";
 
 const Order = ({ viewMode = "orders" }) => {
   const [orders, setOrders] = useState([]);
@@ -28,9 +28,9 @@ const Order = ({ viewMode = "orders" }) => {
   useEffect(() => { fetchProjects(); }, []);
   useEffect(() => { fetchOrders(); }, [filterProjectId]);
 
-  const showNotification = (message, type = "success") => {
+  const showNotification = (message, type = "success", duration = 3000) => {
     setNotification({ message, type });
-    setTimeout(() => setNotification({ message: "", type: "" }), 3000);
+    setTimeout(() => setNotification({ message: "", type: "" }), duration);
   };
 
   // Fetch Orders (Secured)
@@ -38,8 +38,8 @@ const Order = ({ viewMode = "orders" }) => {
     try {
       const token = localStorage.getItem("token"); // 🚀 Get token
       const url = filterProjectId
-        ? `${API_URL}/orders?projectId=${filterProjectId}`
-        : `${API_URL}/orders`;
+        ? `http://localhost:3000/orders?projectId=${filterProjectId}`
+        : "http://localhost:3000/orders";
       const res = await fetch(url, {
         method: "GET",
         headers: {
@@ -57,7 +57,7 @@ const Order = ({ viewMode = "orders" }) => {
   const fetchProjects = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_URL}/projects`, {
+      const res = await fetch("http://localhost:3000/projects", {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (res.ok) setProjects(await res.json());
@@ -75,7 +75,7 @@ const Order = ({ viewMode = "orders" }) => {
   const handleMarkAsSent = async (orderId) => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_URL}/orders/${orderId}/status`, {
+      const res = await fetch(`http://localhost:3000/orders/${orderId}/status`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -102,7 +102,7 @@ const Order = ({ viewMode = "orders" }) => {
   const handleMarkAsFailed = async (orderId) => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_URL}/orders/${orderId}/status`, {
+      const res = await fetch(`http://localhost:3000/orders/${orderId}/status`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -136,7 +136,7 @@ const Order = ({ viewMode = "orders" }) => {
         const formData = new FormData();
         formData.append("file", rawFile);
 
-        const uploadRes = await fetch(`${API_URL}/orders/upload`, {
+        const uploadRes = await fetch("http://localhost:3000/orders/upload", {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${token}` // Pass token safely without breaking multipart boundary
@@ -152,8 +152,8 @@ const Order = ({ viewMode = "orders" }) => {
 
       // 2. Prepare JSON payload
       const url = isUpdate 
-        ? `${API_URL}/orders/${orderData.orderId}` 
-        : `${API_URL}/orders`;
+        ? `http://localhost:3000/orders/${orderData.orderId}` 
+        : `http://localhost:3000/orders`;
       
       const payload = { 
         ...orderData, 
@@ -173,15 +173,15 @@ const Order = ({ viewMode = "orders" }) => {
         body: JSON.stringify(payload) 
       });
       
-      if (!res.ok) throw new Error("Failed to write order records.");
+      if (!res.ok) throw new Error(await getFetchErrorMessage(res, "Failed to save order"));
 
       showNotification(isUpdate ? "Order updated successfully!" : "Order created successfully!");
       fetchOrders();
       setShowEditModal(false);
     } catch (err) {
       console.error("Failed to write order records:", err.message);
-      alert(`Error: ${err.message || "Check server console"}`);
-      showNotification(err.message || "Failed to save order", "error");
+      // Modal stays open so the user can fix the fields listed in the message
+      showNotification(err.message || "Failed to save order", "error", 6000);
     }
   };
 
@@ -190,7 +190,7 @@ const Order = ({ viewMode = "orders" }) => {
     if (!cancelOrder) return;
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_URL}/orders/${cancelOrder.orderId}/status`, {
+      const res = await fetch(`http://localhost:3000/orders/${cancelOrder.orderId}/status`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -233,7 +233,7 @@ const Order = ({ viewMode = "orders" }) => {
 
   return (
     <div className="flex gap-6 relative w-full">
-      {notification.message && <div className={`fixed top-4 right-4 px-4 py-2 rounded shadow-md text-white z-50 ${notification.type === "success" ? "bg-green-500" : "bg-red-500"}`}>{notification.message}</div>}
+      {notification.message && <div className={`fixed top-4 right-4 px-4 py-2 rounded shadow-md text-white z-[60] max-w-md whitespace-pre-line ${notification.type === "success" ? "bg-green-500" : "bg-red-500"}`}>{notification.message}</div>}
 
       <div className="flex-1 p-6 bg-gray-50 min-h-screen">
         <div className="flex justify-between items-center mb-6">

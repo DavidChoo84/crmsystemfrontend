@@ -8,7 +8,7 @@ import {
   faFolder 
 } from "@fortawesome/free-solid-svg-icons";
 import ProjectEditModal from "../components/ProjectEditModal";
-import { API_URL } from "../config";
+import { getFetchErrorMessage } from "../utils/apiError";
 
 const Project = () => {
   const navigate = useNavigate();
@@ -39,7 +39,7 @@ const Project = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token"); // 🚀 Get the token
-      const res = await fetch(`${API_URL}/projects/name/${encodeURIComponent(projectName)}`, {
+      const res = await fetch(`http://localhost:3000/projects/name/${encodeURIComponent(projectName)}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -62,7 +62,7 @@ const Project = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token"); // 🚀 Get the token
-      const res = await fetch(`${API_URL}/projects`, {
+      const res = await fetch("http://localhost:3000/projects", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -87,7 +87,7 @@ const Project = () => {
     if (!isAdmin) return; // 🔒 defensive guard, in case this is ever called programmatically
     try {
       const token = localStorage.getItem("token"); // 🚀 Get the token
-      const res = await fetch(`${API_URL}/projects`, {
+      const res = await fetch("http://localhost:3000/projects", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -95,9 +95,11 @@ const Project = () => {
         },
         body: JSON.stringify(formData),
       });
-      if (res.ok) window.location.href = `/project/${encodeURIComponent(formData.projectName)}`;
+      if (!res.ok) return alert(await getFetchErrorMessage(res, "Failed to create project"));
+      window.location.href = `/project/${encodeURIComponent(formData.projectName.trim())}`;
     } catch (err) {
       console.error("Creation failed", err);
+      alert("Failed to create project. Please check your connection.");
     }
   };
 
@@ -105,7 +107,7 @@ const Project = () => {
     if (!isAdmin) return; // 🔒 defensive guard
     try {
       const token = localStorage.getItem("token"); // 🚀 Get the token
-      const res = await fetch(`${API_URL}/projects/${projectData.projectId}`, {
+      const res = await fetch(`http://localhost:3000/projects/${projectData.projectId}`, {
         method: "PUT",
         headers: { 
           "Content-Type": "application/json",
@@ -114,16 +116,18 @@ const Project = () => {
         body: JSON.stringify({ projectName: formData.projectName }),
       });
 
-      if (res.ok) {
-        setModalMode(null);
-        if (formData.projectName !== projectName) {
-          navigate(`/project/${encodeURIComponent(formData.projectName)}`);
-        } else {
-          fetchProjectDetails();
-        }
+      if (!res.ok) return alert(await getFetchErrorMessage(res, "Failed to update project"));
+
+      setModalMode(null);
+      const newName = formData.projectName.trim();
+      if (newName !== projectName) {
+        navigate(`/project/${encodeURIComponent(newName)}`);
+      } else {
+        fetchProjectDetails();
       }
     } catch (err) {
       console.error("Update failed", err);
+      alert("Failed to update project. Please check your connection.");
     }
   };
 
@@ -132,7 +136,7 @@ const Project = () => {
     setIsDeleting(true);
     try {
       const token = localStorage.getItem("token"); // 🚀 Get the token
-      const res = await fetch(`${API_URL}/projects/${projectData.projectId}`, {
+      const res = await fetch(`http://localhost:3000/projects/${projectData.projectId}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",

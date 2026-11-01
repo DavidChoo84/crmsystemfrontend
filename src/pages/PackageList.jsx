@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faPenToSquare, faTrash, faPlus } from "@fortawesome/free-solid-svg-icons";
 import PackageDetailModal from "../components/PackageDetailModal";
 import PackageEditModal from "../components/PackageEditModal";
-import { API_URL } from "../config";
+import { getFetchErrorMessage } from "../utils/apiError";
 
 const PackageList = () => {
   const { projectName } = useParams();
@@ -36,7 +36,7 @@ const PackageList = () => {
       const token = localStorage.getItem("token"); // 🚀 Get token
 
       // 1. Fetch Projects (Secured)
-      const resProjects = await fetch(`${API_URL}/projects`, {
+      const resProjects = await fetch("http://localhost:3000/projects", {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${token}`
@@ -57,7 +57,7 @@ const PackageList = () => {
       }
 
       // 2. Fetch Packages (Secured)
-      const resPackages = await fetch(`${API_URL}/packages`, {
+      const resPackages = await fetch("http://localhost:3000/packages", {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${token}`
@@ -87,7 +87,7 @@ const PackageList = () => {
       const token = localStorage.getItem("token"); // 🚀 Get token
 
       // Fetch next ID (Secured)
-      const res = await fetch(`${API_URL}/packages/next-id`, {
+      const res = await fetch("http://localhost:3000/packages/next-id", {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${token}`
@@ -125,8 +125,8 @@ const PackageList = () => {
       const token = localStorage.getItem("token"); // 🚀 Get token
       const isUpdate = !updatedPackage.isNew;
       const url = isUpdate
-        ? `${API_URL}/packages/${updatedPackage.packageId}`
-        : `${API_URL}/packages`;
+        ? `http://localhost:3000/packages/${updatedPackage.packageId}`
+        : `http://localhost:3000/packages`;
       
       const method = isUpdate ? "PATCH" : "POST";
 
@@ -147,11 +147,7 @@ const PackageList = () => {
         body: JSON.stringify(payload), 
       });
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        console.error("Server Error Detail:", errorData); 
-        throw new Error(errorData.message || "Failed to save package");
-      }
+      if (!res.ok) throw new Error(await getFetchErrorMessage(res, "Failed to save package"));
 
       const saved = await res.json();
 
@@ -172,7 +168,7 @@ const PackageList = () => {
       setEditPackage(null);
     } catch (err) {
       console.error("Error saving package:", err);
-      showNotification(err.message || "Failed to save package", "error");
+      showNotification(err.message || "Failed to save package", "error", 6000);
     }
   };
 
@@ -183,7 +179,7 @@ const PackageList = () => {
 
       // Delete request (Secured)
       const res = await fetch(
-        `${API_URL}/packages/${deletePackage.packageId}`,
+        `http://localhost:3000/packages/${deletePackage.packageId}`,
         { 
           method: "DELETE",
           headers: {
@@ -327,7 +323,7 @@ const PackageList = () => {
       )}
 
       {notification.message && (
-        <div className={`fixed top-4 right-4 px-4 py-2 rounded shadow-md text-white z-50 ${notification.type === "success" ? "bg-green-500" : "bg-red-500"}`}>
+        <div className={`fixed top-4 right-4 px-4 py-2 rounded shadow-md text-white z-[60] max-w-md whitespace-pre-line ${notification.type === "success" ? "bg-green-500" : "bg-red-500"}`}>
           {notification.message}
         </div>
       )}

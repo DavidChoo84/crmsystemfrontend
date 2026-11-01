@@ -7,8 +7,8 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 // IMPORT CUSTOMER EDIT MODAL
-import CustomerEditModal from "./CustomerEditModal"; 
-import { API_URL } from "../config";
+import CustomerEditModal from "./CustomerEditModal";
+import { getAxiosErrorMessage } from "../utils/apiError";
 
 const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
   const [nextId, setNextId] = useState("");
@@ -88,7 +88,7 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
   // Fetch Next ID for New Orders
   useEffect(() => {
     if (order.isNew && !nextId) {
-      axios.get(`${API_URL}/orders/next-id`)
+      axios.get("http://localhost:3000/orders/next-id")
         .then(res => setNextId(res.data.nextId))
         .catch(err => console.error("Error fetching next ID", err));
     }
@@ -96,7 +96,7 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
 
   // Fetch Package Templates
   useEffect(() => {
-    axios.get(`${API_URL}/packages`)
+    axios.get("http://localhost:3000/packages")
       .then(res => setAvailablePackages(res.data))
       .catch(err => console.error("Failed to fetch templates", err));
   }, []);
@@ -198,7 +198,7 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
           packagePrice: 0,
           quantity: 1,
           hasFreeGift: false,
-          orderProducts: [{ productId: "CUSTOM_ITEM", productName: "Custom Item", quantity: 1 }] 
+          orderProducts: [{ productId: "CUSTOM_ITEM", productName: "Custom Item", unitCost: 0, quantity: 1 }] // unitCost is NOT NULL in order_product
         }
       ] 
     }));
@@ -231,7 +231,7 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
   const handleOpenNewCustomer = async () => {
     setFetchingCustomerId(true);
     try {
-      const res = await axios.get(`${API_URL}/customers/next-id`);
+      const res = await axios.get("http://localhost:3000/customers/next-id");
       setNewCustomerId(res.data.nextId || res.data || "");
     } catch (err) {
       console.error("Error fetching next customer ID", err);
@@ -254,7 +254,7 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
       // treated the raw, unsaved form payload as if it were already
       // saved. Now it actually POSTs to create the customer, matching
       // the same endpoint CustomerList.jsx's handleSaveCustomer uses.
-      const res = await axios.post(`${API_URL}/customers`, customerPayload);
+      const res = await axios.post("http://localhost:3000/customers", customerPayload);
       const saved = res.data;
 
       setFormData(prev => ({
@@ -268,7 +268,7 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
       setNewCustomerId("");
     } catch (err) {
       console.error("Failed to create customer:", err);
-      alert(err.response?.data?.message || "Failed to create customer. Please try again.");
+      alert(getAxiosErrorMessage(err, "Failed to create customer. Please try again."));
     }
   };
 
@@ -286,8 +286,8 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
   const loadCustomerOptions = async (inputValue) => {
     try {
       const url = inputValue.length > 0 
-        ? `${API_URL}/customers/search?q=${inputValue}`
-        : `${API_URL}/customers`;
+        ? `http://localhost:3000/customers/search?q=${inputValue}`
+        : `http://localhost:3000/customers`;
       const res = await axios.get(url);
       return res.data.map(c => ({
         value: c.customerId,
@@ -408,7 +408,7 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
               <label className={labelStyle}><FontAwesomeIcon icon={faBullhorn} className="mr-1" /> Channel</label>
               <select name="channel" value={formData.channel} onChange={handleChange} disabled={lockOrderFields} className={lockOrderFields ? readOnlyStyle : inputStyle}>
                 <option value="Facebook">Facebook</option>
-                <option value="WhatsApp">WhatsApp</option>
+                <option value="Whatsapp">WhatsApp</option>{/* value must match the backend enum spelling */}
                 <option value="Instagram">Instagram</option>
                 <option value="TikTok">TikTok Shop</option>
                 <option value="Website">Website</option>

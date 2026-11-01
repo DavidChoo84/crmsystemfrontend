@@ -5,7 +5,7 @@ import { faEye, faPenToSquare, faTrash, faPlus, faFilter, faUndo, faFileExcel } 
 // Assuming you have created these similar to your Product modals
 import CustomerDetailModal from "../components/CustomerDetailModal";
 import CustomerEditModal from "../components/CustomerEditModal";
-import { API_URL } from "../config";
+import { getFetchErrorMessage } from "../utils/apiError";
 
 const fmtRM = (n) => `RM ${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -52,7 +52,7 @@ const CustomerList = () => {
   const fetchCustomers = async () => {
     try {
       console.log("🔍 Fetching Customers...");
-      const res = await fetch(`${API_URL}/customers`);
+      const res = await fetch("http://localhost:3000/customers");
       if (!res.ok) throw new Error("Failed to fetch customers");
       
       const data = await res.json();
@@ -69,7 +69,7 @@ const CustomerList = () => {
   // 2. Add Customer (Pre-fetch ID)
   const handleAdd = async () => {
     try {
-      const res = await fetch(`${API_URL}/customers/next-id`); 
+      const res = await fetch("http://localhost:3000/customers/next-id"); 
       let nextId = "C???";
       if (res.ok) {
         const data = await res.json();
@@ -106,8 +106,8 @@ const CustomerList = () => {
     try {
       const isUpdate = !updatedCustomer.isNew;
       const url = isUpdate
-        ? `${API_URL}/customers/${updatedCustomer.customerId}`
-        : `${API_URL}/customers`;
+        ? `http://localhost:3000/customers/${updatedCustomer.customerId}`
+        : `http://localhost:3000/customers`;
       const method = isUpdate ? "PUT" : "POST";
 
       const res = await fetch(url, {
@@ -116,7 +116,7 @@ const CustomerList = () => {
         body: JSON.stringify(updatedCustomer),
       });
 
-      if (!res.ok) throw new Error("Failed to save customer");
+      if (!res.ok) throw new Error(await getFetchErrorMessage(res, "Failed to save customer"));
 
       const saved = await res.json();
 
@@ -135,7 +135,7 @@ const CustomerList = () => {
       setEditCustomer(null);
     } catch (err) {
       console.error("Error saving customer:", err);
-      showNotification("Failed to save customer", "error");
+      showNotification(err.message || "Failed to save customer", "error", 6000);
     }
   };
 
@@ -158,7 +158,7 @@ const CustomerList = () => {
     if (!deleteCustomer) return;
     try {
       const res = await fetch(
-        `${API_URL}/customers/${deleteCustomer.customerId}`,
+        `http://localhost:3000/customers/${deleteCustomer.customerId}`,
         { method: "DELETE" }
       );
 
@@ -209,7 +209,7 @@ const CustomerList = () => {
     try {
       const [year, month] = exportMonth ? exportMonth.split("-").map(Number) : [];
       const query = exportMonth ? `?year=${year}&month=${month}` : "";
-      const res = await fetch(`${API_URL}/customers/export${query}`);
+      const res = await fetch(`http://localhost:3000/customers/export${query}`);
       if (!res.ok) throw new Error("Failed to load export data");
       const rows = await res.json();
 
@@ -302,7 +302,7 @@ const CustomerList = () => {
       {/* Notification Toast */}
       {notification.message && (
         <div
-          className={`fixed top-4 right-4 px-4 py-2 rounded shadow-md text-white z-50 ${
+          className={`fixed top-4 right-4 px-4 py-2 rounded shadow-md text-white z-[60] max-w-md whitespace-pre-line ${
             notification.type === "success" ? "bg-green-500" : "bg-red-500"
           }`}
         >

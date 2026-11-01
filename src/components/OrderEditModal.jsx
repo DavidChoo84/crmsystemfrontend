@@ -7,7 +7,8 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 // IMPORT CUSTOMER EDIT MODAL
-import CustomerEditModal from "./CustomerEditModal"; 
+import CustomerEditModal from "./CustomerEditModal";
+import { getAxiosErrorMessage } from "../utils/apiError";
 
 const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
   const [nextId, setNextId] = useState("");
@@ -197,7 +198,7 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
           packagePrice: 0,
           quantity: 1,
           hasFreeGift: false,
-          orderProducts: [{ productId: "CUSTOM_ITEM", productName: "Custom Item", quantity: 1 }] 
+          orderProducts: [{ productId: "CUSTOM_ITEM", productName: "Custom Item", unitCost: 0, quantity: 1 }] // unitCost is NOT NULL in order_product
         }
       ] 
     }));
@@ -267,7 +268,7 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
       setNewCustomerId("");
     } catch (err) {
       console.error("Failed to create customer:", err);
-      alert(err.response?.data?.message || "Failed to create customer. Please try again.");
+      alert(getAxiosErrorMessage(err, "Failed to create customer. Please try again."));
     }
   };
 
@@ -407,7 +408,7 @@ const OrderEditModal = ({ order, viewMode = "orders", onClose, onSave }) => {
               <label className={labelStyle}><FontAwesomeIcon icon={faBullhorn} className="mr-1" /> Channel</label>
               <select name="channel" value={formData.channel} onChange={handleChange} disabled={lockOrderFields} className={lockOrderFields ? readOnlyStyle : inputStyle}>
                 <option value="Facebook">Facebook</option>
-                <option value="WhatsApp">WhatsApp</option>
+                <option value="Whatsapp">WhatsApp</option>{/* value must match the backend enum spelling */}
                 <option value="Instagram">Instagram</option>
                 <option value="TikTok">TikTok Shop</option>
                 <option value="Website">Website</option>

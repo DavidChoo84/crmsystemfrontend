@@ -91,6 +91,9 @@ const CustomerEditModal = ({ customer, onClose, onSave }) => {
   };
 
   const labelClass = "text-xs font-semibold text-gray-500 uppercase tracking-tight";
+  // Required fields are enforced by the backend, which lists every missing field at once
+  const Required = () => <span className="text-red-500 ml-0.5">*</span>;
+  const Optional = () => <span className="normal-case font-normal text-gray-400 ml-1">(optional)</span>;
   const inputClass = "w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition text-sm";
 
   return (
@@ -124,30 +127,30 @@ const CustomerEditModal = ({ customer, onClose, onSave }) => {
             </div>
 
             <div>
-              <label className={labelClass}>Full Name</label>
-              <input type="text" name="name" value={formData.name} onChange={handleChange} required className={inputClass} />
+              <label className={labelClass}>Full Name<Required /></label>
+              <input type="text" name="name" value={formData.name} onChange={handleChange} className={inputClass} />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
                <div>
-                  <label className={labelClass}>Birthday</label>
+                  <label className={labelClass}>Birthday<Optional /></label>
                   <div className="relative">
                     <input type="date" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} className={inputClass} />
                   </div>
                </div>
                <div>
-                  <label className={labelClass}>FB Name</label>
+                  <label className={labelClass}>FB Name<Optional /></label>
                   <input type="text" name="fbName" value={formData.fbName} onChange={handleChange} placeholder="Username" className={inputClass} />
                </div>
             </div>
 
             <div>
-              <label className={labelClass}>Email Address</label>
+              <label className={labelClass}>Email Address<Optional /></label>
               <input type="email" name="email" value={formData.email} onChange={handleChange} className={inputClass} />
             </div>
 
             <div>
-              <label className={labelClass}>Mobile Phone</label>
+              <label className={labelClass}>Mobile Phone<Required /></label>
               <input type="tel" name="mobilePhone" value={formData.mobilePhone} onChange={handleChange} className={inputClass} />
             </div>
           </div>
@@ -159,23 +162,23 @@ const CustomerEditModal = ({ customer, onClose, onSave }) => {
             </h3>
             
             <div>
-              <label className={labelClass}>Full Address</label>
+              <label className={labelClass}>Full Address<Required /></label>
               <textarea name="address" value={formData.address} onChange={handleChange} rows="3" className={`${inputClass} resize-none`} placeholder="Street address, unit number..."></textarea>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelClass}>Postcode</label>
+                <label className={labelClass}>Postcode<Required /></label>
                 <input type="text" name="postCode" value={formData.postCode} onChange={handleChange} className={inputClass} />
               </div>
               <div>
-                <label className={labelClass}>City</label>
+                <label className={labelClass}>City<Required /></label>
                 <input type="text" name="city" value={formData.city} onChange={handleChange} className={inputClass} />
               </div>
             </div>
 
             <div>
-              <label className={labelClass}>State</label>
+              <label className={labelClass}>State<Required /></label>
               <select name="state" value={formData.state} onChange={handleChange} className={inputClass}>
                 <option value="">Select State</option>
                 <option value="Johor">Johor</option>
@@ -199,7 +202,7 @@ const CustomerEditModal = ({ customer, onClose, onSave }) => {
           {/* COLUMN 3: ACCOUNT & SUMMARY */}
           <div className="space-y-4">
             <h3 className="text-sm font-bold text-gray-500 uppercase border-b pb-2 flex items-center gap-2">
-              <FontAwesomeIcon icon={faChartLine} /> Loyalty & Status
+              <FontAwesomeIcon icon={faChartLine} /> Loyalty & Status<Optional />
             </h3>
 
             <div>

@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faPenToSquare, faTrash, faPlus } from "@fortawesome/free-solid-svg-icons";
 import PackageDetailModal from "../components/PackageDetailModal";
 import PackageEditModal from "../components/PackageEditModal";
+import { getFetchErrorMessage } from "../utils/apiError";
 
 const PackageList = () => {
   const { projectName } = useParams();
@@ -146,11 +147,7 @@ const PackageList = () => {
         body: JSON.stringify(payload), 
       });
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        console.error("Server Error Detail:", errorData); 
-        throw new Error(errorData.message || "Failed to save package");
-      }
+      if (!res.ok) throw new Error(await getFetchErrorMessage(res, "Failed to save package"));
 
       const saved = await res.json();
 
@@ -171,7 +168,7 @@ const PackageList = () => {
       setEditPackage(null);
     } catch (err) {
       console.error("Error saving package:", err);
-      showNotification(err.message || "Failed to save package", "error");
+      showNotification(err.message || "Failed to save package", "error", 6000);
     }
   };
 
@@ -326,7 +323,7 @@ const PackageList = () => {
       )}
 
       {notification.message && (
-        <div className={`fixed top-4 right-4 px-4 py-2 rounded shadow-md text-white z-50 ${notification.type === "success" ? "bg-green-500" : "bg-red-500"}`}>
+        <div className={`fixed top-4 right-4 px-4 py-2 rounded shadow-md text-white z-[60] max-w-md whitespace-pre-line ${notification.type === "success" ? "bg-green-500" : "bg-red-500"}`}>
           {notification.message}
         </div>
       )}

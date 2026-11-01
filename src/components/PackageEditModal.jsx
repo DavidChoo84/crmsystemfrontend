@@ -150,7 +150,8 @@ const PackageEditModal = ({ pkg, projectId, onClose, onSave }) => {
     const payload = {
       ...formData,
       // ✅ FIX: Safe parsing handles edge cases where users clear inputs
-      sellingPrice: parseFloat(formData.sellingPrice) || 0,
+      // Sent as typed so the backend can flag a blank price as required (|| 0 would hide it)
+      sellingPrice: formData.sellingPrice,
       shippingCost: parseFloat(formData.shippingCost) || 0,
       totalCost: parseFloat(formData.totalCost) || 0,
       costMargin: parseFloat(formData.costMargin) || 0,

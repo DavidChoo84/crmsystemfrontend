@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faPenToSquare, faTrash, faPlus, faGift } from "@fortawesome/free-solid-svg-icons";
 import ProductDetailModal from "../components/ProductDetailModal";
 import ProductEditModal from "../components/ProductEditModal";
+import { getFetchErrorMessage } from "../utils/apiError";
 
 // The project comes from the sidebar (URL); this only switches between the
 // project's main products and its free gift items.
@@ -178,7 +179,7 @@ const ProductList = () => {
         body: JSON.stringify(bodyData),
       });
 
-      if (!res.ok) throw new Error("Failed to save product");
+      if (!res.ok) throw new Error(await getFetchErrorMessage(res, "Failed to save product"));
 
       const saved = await res.json();
 
@@ -197,7 +198,7 @@ const ProductList = () => {
       setEditProduct(null);
     } catch (err) {
       console.error("Error saving product:", err);
-      showNotification("Failed to save product", "error");
+      showNotification(err.message || "Failed to save product", "error", 6000);
     }
   };
 
@@ -253,7 +254,7 @@ const ProductList = () => {
       {/* Notification */}
       {notification.message && (
         <div
-          className={`fixed top-4 right-4 px-4 py-2 rounded shadow-md text-white z-50 ${
+          className={`fixed top-4 right-4 px-4 py-2 rounded shadow-md text-white z-[60] max-w-md whitespace-pre-line ${
             notification.type === "success" ? "bg-green-500" : "bg-red-500"
           }`}
         >

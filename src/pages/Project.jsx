@@ -8,6 +8,7 @@ import {
   faFolder 
 } from "@fortawesome/free-solid-svg-icons";
 import ProjectEditModal from "../components/ProjectEditModal";
+import { getFetchErrorMessage } from "../utils/apiError";
 
 const Project = () => {
   const navigate = useNavigate();
@@ -94,9 +95,11 @@ const Project = () => {
         },
         body: JSON.stringify(formData),
       });
-      if (res.ok) window.location.href = `/project/${encodeURIComponent(formData.projectName)}`;
+      if (!res.ok) return alert(await getFetchErrorMessage(res, "Failed to create project"));
+      window.location.href = `/project/${encodeURIComponent(formData.projectName.trim())}`;
     } catch (err) {
       console.error("Creation failed", err);
+      alert("Failed to create project. Please check your connection.");
     }
   };
 
@@ -113,16 +116,18 @@ const Project = () => {
         body: JSON.stringify({ projectName: formData.projectName }),
       });
 
-      if (res.ok) {
-        setModalMode(null);
-        if (formData.projectName !== projectName) {
-          navigate(`/project/${encodeURIComponent(formData.projectName)}`);
-        } else {
-          fetchProjectDetails();
-        }
+      if (!res.ok) return alert(await getFetchErrorMessage(res, "Failed to update project"));
+
+      setModalMode(null);
+      const newName = formData.projectName.trim();
+      if (newName !== projectName) {
+        navigate(`/project/${encodeURIComponent(newName)}`);
+      } else {
+        fetchProjectDetails();
       }
     } catch (err) {
       console.error("Update failed", err);
+      alert("Failed to update project. Please check your connection.");
     }
   };
 

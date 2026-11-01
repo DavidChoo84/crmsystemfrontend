@@ -26,7 +26,11 @@ const ProjectEditModal = ({ project, onClose, onSave }) => {
   const fetchNextId = async () => {
     setLoadingId(true);
     try {
-      const res = await axios.get("http://localhost:3000/projects/next-id");
+      // /projects is behind JwtAuthGuard — without the token this returns 401
+      const token = localStorage.getItem("token");
+      const res = await axios.get("http://localhost:3000/projects/next-id", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setFormData(prev => ({ ...prev, projectId: res.data.nextId }));
     } catch (err) {
       console.error("Error fetching next project ID", err);

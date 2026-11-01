@@ -5,6 +5,7 @@ import { faEye, faPenToSquare, faTrash, faPlus, faFilter, faUndo, faFileExcel } 
 // Assuming you have created these similar to your Product modals
 import CustomerDetailModal from "../components/CustomerDetailModal";
 import CustomerEditModal from "../components/CustomerEditModal";
+import { getFetchErrorMessage } from "../utils/apiError";
 
 const fmtRM = (n) => `RM ${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -115,7 +116,7 @@ const CustomerList = () => {
         body: JSON.stringify(updatedCustomer),
       });
 
-      if (!res.ok) throw new Error("Failed to save customer");
+      if (!res.ok) throw new Error(await getFetchErrorMessage(res, "Failed to save customer"));
 
       const saved = await res.json();
 
@@ -134,7 +135,7 @@ const CustomerList = () => {
       setEditCustomer(null);
     } catch (err) {
       console.error("Error saving customer:", err);
-      showNotification("Failed to save customer", "error");
+      showNotification(err.message || "Failed to save customer", "error", 6000);
     }
   };
 
@@ -301,7 +302,7 @@ const CustomerList = () => {
       {/* Notification Toast */}
       {notification.message && (
         <div
-          className={`fixed top-4 right-4 px-4 py-2 rounded shadow-md text-white z-50 ${
+          className={`fixed top-4 right-4 px-4 py-2 rounded shadow-md text-white z-[60] max-w-md whitespace-pre-line ${
             notification.type === "success" ? "bg-green-500" : "bg-red-500"
           }`}
         >

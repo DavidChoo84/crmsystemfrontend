@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFolder, faPlus } from "@fortawesome/free-solid-svg-icons"; // Use faFolder for the welcome screen
 import ProjectEditModal from "./ProjectEditModal";
 import { API_URL } from "../config";
+import { getFetchErrorMessage } from "../utils/apiError";
 
 const ProjectRedirect = () => {
   // fetchProjects is passed from the Parent/Layout context to force a refresh
@@ -22,23 +23,29 @@ const ProjectRedirect = () => {
 
   const handleSaveProject = async (formData) => {
     try {
+      // 🔑 FIX: /projects is behind JwtAuthGuard — without the token this always returned 401
+      const token = localStorage.getItem("token");
       const res = await fetch(`${API_URL}/projects`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
         body: JSON.stringify(formData),
       });
 
-      if (res.ok) {
-        setIsModalOpen(false);
-        
-        // If your parent component handles the project list, refresh it here
-        if (fetchProjects) await fetchProjects();
+      if (!res.ok) return alert(await getFetchErrorMessage(res, "Failed to create project"));
 
-        // Navigate to the new project
-        navigate(`/project/${encodeURIComponent(formData.projectName)}`);
-      }
+      setIsModalOpen(false);
+
+      // If your parent component handles the project list, refresh it here
+      if (fetchProjects) await fetchProjects();
+
+      // Navigate to the new project
+      navigate(`/project/${encodeURIComponent(formData.projectName.trim())}`);
     } catch (err) {
       console.error("Error creating first project", err);
+      alert("Failed to create project. Please check your connection.");
     }
   };
 
